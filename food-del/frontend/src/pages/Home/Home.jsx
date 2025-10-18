@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Header from "../../components/Header/Header";
 import ExploreMenu from "../../components/ExploreMenu/ExploreMenu";
 import FoodDisplay from "../../components/FoodDisplay/FoodDisplay";
-import AppDownload from "../../components/AppDownload/AppDownload";
+import Slideshow from "../../components/Slideshow/Slideshow"; // new section
 
 const Home = () => {
   // "All" means show the full menu; categories set this to their name
@@ -20,11 +20,12 @@ const Home = () => {
   return (
     <>
       <Header onViewMenu={handleViewMenu} />
-      {/* ExploreMenu already toggles categories; do NOT add an "All" chip here */}
+      {/* ExploreMenu toggles categories; no "All" chip here */}
       <ExploreMenu setCategory={setCategory} category={category} />
       {/* FoodDisplay shows either all or filtered by category */}
       <FoodDisplay category={category} />
-      <AppDownload />
+      {/* New infinite all-CSS slideshow lives where the old app-download section was */}
+      <Slideshow />
     </>
   );
 };
