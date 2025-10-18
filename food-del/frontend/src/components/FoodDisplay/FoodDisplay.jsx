@@ -1,8 +1,12 @@
 import React, { useContext } from "react";
-import "./FoodDisplay.css"; // keep your existing styles
+import "./FoodDisplay.css";
 import { StoreContext } from "../../Context/StoreContext";
 import FoodItem from "../FoodItem/FoodItem";
 
+/**
+ * Renders items under the categories strip.
+ * If category is "All" or empty, show everything.
+ */
 const FoodDisplay = ({ category }) => {
   const { food_list } = useContext(StoreContext);
 
@@ -16,8 +20,8 @@ const FoodDisplay = ({ category }) => {
       <div className="food-display-list">
         {list.map((item) => (
           <FoodItem
-            key={item._id}           // never use index here
-            _id={item._id}           // pass the real ID
+            key={item._id}     // important: stable key
+            _id={item._id}
             name={item.name}
             price={item.price}
             description={item.description}
