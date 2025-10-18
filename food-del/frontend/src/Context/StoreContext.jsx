@@ -68,7 +68,9 @@ const StoreContextProvider = (props) => {
     for (const item in cartItems) {
       try {
         if (cartItems[item] > 0) {
-          const itemInfo = food_list.find((product) => String(product._id) === String(item));
+          const itemInfo = food_list.find(
+            (product) => String(product._id) === String(item)
+          );
           if (itemInfo) totalAmount += Number(itemInfo.price || 0) * cartItems[item];
         }
       } catch {
@@ -85,10 +87,52 @@ const StoreContextProvider = (props) => {
       return { ...it, _id: id != null ? String(id) : undefined };
     });
 
+  /**
+   * Merge DB items with seeded items.
+   * Priority: DB > seed when names collide (case-insensitive).
+   * Also dedupe by _id as a final guard.
+   */
+  const mergeFoodLists = (dbRaw = [], seedRaw = []) => {
+    const db = normalizeIds(dbRaw);
+    const seed = normalizeIds(seedRaw);
+
+    // Map DB by lowercased name so DB overrides seed with same name
+    const dbByName = new Map();
+    db.forEach((item) => {
+      const key = (item.name || "").trim().toLowerCase();
+      if (key) dbByName.set(key, item);
+    });
+
+    // Start with seed items that are NOT overridden by DB name
+    const merged = [];
+    seed.forEach((item) => {
+      const key = (item.name || "").trim().toLowerCase();
+      if (!dbByName.has(key)) merged.push(item);
+    });
+
+    // Append all DB items (override behavior already handled)
+    merged.push(...db);
+
+    // Final dedupe by _id for safety
+    const seen = new Set();
+    return merged.filter((it) => {
+      const id = it._id || `${(it.name || "").toLowerCase()}|${it.price}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+
   const fetchFoodList = async () => {
-    const response = await axios.get(url + "/api/food/list");
-    const src = response.data?.data?.length ? response.data.data : seedFoodList;
-    setFoodList(normalizeIds(src));
+    try {
+      const response = await axios.get(url + "/api/food/list");
+      const dbItems = Array.isArray(response?.data?.data) ? response.data.data : [];
+      const merged = mergeFoodLists(dbItems, seedFoodList);
+      setFoodList(merged);
+    } catch {
+      // On failure, show seed items so menu isn't empty
+      setFoodList(normalizeIds(seedFoodList));
+    }
   };
 
   /**
@@ -97,7 +141,8 @@ const StoreContextProvider = (props) => {
    * Accepts either {token: <jwt>} or a bare string token.
    */
   const loadCartData = async (tokenOrObj) => {
-    const hdrs = typeof tokenOrObj === "string" ? { token: tokenOrObj } : tokenOrObj;
+    const hdrs =
+      typeof tokenOrObj === "string" ? { token: tokenOrObj } : tokenOrObj;
     // 1) fetch server cart
     const res = await axios.post(url + "/api/cart/get", {}, { headers: hdrs });
     const serverCart = res?.data?.cartData || {};
@@ -110,7 +155,11 @@ const StoreContextProvider = (props) => {
     const guestHasItems = Object.values(guestCart).some((q) => Number(q) > 0);
 
     if (guestHasItems) {
-      const mergeRes = await axios.post(url + "/api/cart/merge", { cart: guestCart }, { headers: hdrs });
+      const mergeRes = await axios.post(
+        url + "/api/cart/merge",
+        { cart: guestCart },
+        { headers: hdrs }
+      );
       merged = mergeRes?.data?.cartData || serverCart;
       // clear guest cart after successful merge
       writeGuestCart({});
@@ -151,9 +200,14 @@ const StoreContextProvider = (props) => {
     setCartItems,
     currency,
     deliveryCharge,
+    fetchFoodList, // exposed in case you want to manually refresh after admin actions
   };
 
-  return <StoreContext.Provider value={contextValue}>{props.children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={contextValue}>
+      {props.children}
+    </StoreContext.Provider>
+  );
 };
 
 export default StoreContextProvider;
