@@ -1,35 +1,65 @@
-.add{
-    width: 70%;
-    margin-left: max(5vw,25px);
-    margin-top: 50px;
-    color: #6D6D6D;
-    font-size: 16px;
+.add {
+  padding: 10px 20px;
 }
-.add form{
-   gap: 20px;
+
+.add .add-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
 }
-.add-img-upload img{
-    width: 120px;
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
 }
-.add-product-name, .add-product-description{
-    width: max(40%,280px);
+
+.add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.add-product-name input ,.add-product-description textarea{
-    padding: 10px 10px;
+
+.label {
+  font-size: 14px;
+  color: #444;
 }
-.add-category-price{
-    display: flex;
-    gap: 30px;
+
+.add input,
+.add textarea,
+.add select {
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
 }
-.add-category-price select,.add-category-price input{
-    max-width: 120px;
-    padding: 10px;
+
+.add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
-.add-btn{
-    max-width: 120px;
-    border: none;
-    padding: 10px;
-    background-color: black;
-    color: white;
-    cursor: pointer;
+
+.add-btn {
+  width: 120px;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #111;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 680px) {
+  .add-row {
+    grid-template-columns: 1fr;
+  }
 }

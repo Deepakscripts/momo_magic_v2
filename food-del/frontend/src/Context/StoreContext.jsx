@@ -1,15 +1,16 @@
 import { createContext, useEffect, useState } from "react";
 import { food_list as seedFoodList, menu_list } from "../assets/assets";
 import axios from "axios";
+
 export const StoreContext = createContext(null);
 
 const StoreContextProvider = (props) => {
-
   const url = "http://localhost:4000";
   const [food_list, setFoodList] = useState([]);
   const [cartItems, setCartItems] = useState({});
   const [token, setToken] = useState("");
   const currency = "₹";
+  // Dine-in: no delivery fee
   const deliveryCharge = 0;
 
   // ---- helpers for local guest cart persistence ----
@@ -38,6 +39,7 @@ const StoreContextProvider = (props) => {
   }, [cartItems, token]);
 
   const addToCart = async (itemId) => {
+    if (!itemId) return; // refuse to mutate for bad ids
     setCartItems((prev) => {
       const next = { ...prev, [itemId]: (prev[itemId] || 0) + 1 };
       return next;
@@ -48,6 +50,7 @@ const StoreContextProvider = (props) => {
   };
 
   const removeFromCart = async (itemId) => {
+    if (!itemId) return;
     setCartItems((prev) => {
       const qty = (prev[itemId] || 0) - 1;
       const next = { ...prev };
@@ -65,8 +68,8 @@ const StoreContextProvider = (props) => {
     for (const item in cartItems) {
       try {
         if (cartItems[item] > 0) {
-          const itemInfo = food_list.find((product) => product._id === item);
-          if (itemInfo) totalAmount += itemInfo.price * cartItems[item];
+          const itemInfo = food_list.find((product) => String(product._id) === String(item));
+          if (itemInfo) totalAmount += Number(itemInfo.price || 0) * cartItems[item];
         }
       } catch {
         // ignore lookup errors
@@ -75,9 +78,17 @@ const StoreContextProvider = (props) => {
     return totalAmount;
   };
 
+  // Ensure every item has a stable string _id
+  const normalizeIds = (list) =>
+    (list || []).map((it) => {
+      const id = it?._id ?? it?.id ?? it?.itemId;
+      return { ...it, _id: id != null ? String(id) : undefined };
+    });
+
   const fetchFoodList = async () => {
     const response = await axios.get(url + "/api/food/list");
-    setFoodList(response.data.data || seedFoodList);
+    const src = response.data?.data?.length ? response.data.data : seedFoodList;
+    setFoodList(normalizeIds(src));
   };
 
   /**
@@ -96,22 +107,18 @@ const StoreContextProvider = (props) => {
 
     // 3) if guest cart has items, ask backend to merge, else use server cart
     let merged = serverCart;
-    const guestHasItems = Object.values(guestCart).some(q => Number(q) > 0);
+    const guestHasItems = Object.values(guestCart).some((q) => Number(q) > 0);
 
     if (guestHasItems) {
-      const mergeRes = await axios.post(
-        url + "/api/cart/merge",
-        { cart: guestCart },
-        { headers: hdrs }
-      );
+      const mergeRes = await axios.post(url + "/api/cart/merge", { cart: guestCart }, { headers: hdrs });
       merged = mergeRes?.data?.cartData || serverCart;
       // clear guest cart after successful merge
       writeGuestCart({});
     }
 
-    // 4) set application state and mirror to localStorage (useful for SSR/fallback)
+    // 4) set application state and mirror to localStorage
     setCartItems(merged);
-    writeGuestCart(merged); // harmless even if logged in
+    writeGuestCart(merged);
     return merged;
   };
 
@@ -124,7 +131,6 @@ const StoreContextProvider = (props) => {
         setToken(saved);
         await loadCartData({ token: saved });
       } else {
-        // hydrate cart from guest localStorage for logged-out sessions
         setCartItems(readGuestCart());
       }
     }
@@ -144,14 +150,10 @@ const StoreContextProvider = (props) => {
     loadCartData,
     setCartItems,
     currency,
-    deliveryCharge
+    deliveryCharge,
   };
 
-  return (
-    <StoreContext.Provider value={contextValue}>
-      {props.children}
-    </StoreContext.Provider>
-  );
-}
+  return <StoreContext.Provider value={contextValue}>{props.children}</StoreContext.Provider>;
+};
 
 export default StoreContextProvider;
