@@ -38,12 +38,10 @@ const LoginPopup = ({ setShowLogin }) => {
       const res = await axios.post(`${url}/api/sms/request`, { phoneNumber: phone })
       if (res.data?.success) {
         setStep('otp')
-        // Use server-provided cooldown if available, else 60s
         const seconds = Number(res.data.cooldownSeconds || 60)
         startCooldown(seconds)
         toast.success('OTP sent via SMS')
       } else {
-        // If server included remaining cooldown, reflect it in UI
         if (typeof res.data?.remaining === 'number') {
           startCooldown(res.data.remaining)
         }
@@ -63,9 +61,12 @@ const LoginPopup = ({ setShowLogin }) => {
     try {
       const res = await axios.post(`${url}/api/sms/verify`, { phoneNumber: phone, otp: otp.trim() })
       if (res.data?.success && res.data?.token) {
+        // 1) store token
         setToken(res.data.token)
         localStorage.setItem('token', res.data.token)
+        // 2) load & MERGE cart on the server, then hydrate state
         await loadCartData({ token: res.data.token })
+        // 3) close
         setShowLogin(false)
         toast.success('Logged in successfully')
       } else {
@@ -106,7 +107,6 @@ const LoginPopup = ({ setShowLogin }) => {
               placeholder='OTP'
               value={otp}
               onChange={(e) => {
-                // keep only digits; optional but nice UX
                 const digits = e.target.value.replace(/\D/g, '')
                 setOtp(digits)
               }}
