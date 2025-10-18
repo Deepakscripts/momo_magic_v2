@@ -10,7 +10,7 @@ const StoreContextProvider = (props) => {
   const [cartItems, setCartItems] = useState({});
   const [token, setToken] = useState("");
   const currency = "₹";
-  const deliveryCharge = 50;
+  const deliveryCharge = 0;
 
   // ---- helpers for local guest cart persistence ----
   const LS_KEY = "guest_cart";

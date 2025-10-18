@@ -1,42 +1,84 @@
-.order-item{
-    display: grid;
-    grid-template-columns: 0.5fr 2fr 1fr 1fr 1fr;
-    align-items: start;
-    gap: 30px;
-    border: 1px solid tomato;
-    padding: 20px;
-    margin: 30px 0px;
-    font-size: 14px;
-    color: #505050;
+.order-item {
+  display: grid;
+  grid-template-columns: 0.5fr 2fr 0.9fr 0.8fr 1.1fr;
+  align-items: start;
+  gap: 24px;
+  border: 1px solid tomato;
+  padding: 20px;
+  margin: 24px 0;
+  font-size: 14px;
+  color: #505050;
+  background: #fff;
 }
-.order-item-food,.order-item-name{
-    font-weight: 600;
+
+.order-item img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
-.order-item-name{
-    margin-top: 30px;
-    margin-bottom: 5px;
+
+.order-item-food,
+.order-item-name {
+  font-weight: 600;
 }
-.order-item-address{
-    margin-bottom: 10px;
+
+.order-item-name {
+  margin-top: 10px;
+  margin-bottom: 8px;
 }
-.order-item select{
-    background-color: #ffe8e4;
-    border: 1px solid tomato;
-    width: max(10vw,120px);
-    padding: 10px;
-    outline:none;
+
+.order-main .order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-@media(max-width:1000px){
-    .order-item{
-        font-size: 12px;
-        grid-template-columns: 0.5fr 2fr 1fr;
-        padding: 15px 8px;
-    }
-    .order-item select{
-        padding: 5px;
-        font-size: 12px;
-    }
-    .order-item img{
-        width: 40px;
-    }
+
+.order-meta-chip {
+  background: #f6f6f6;
+  border: 1px solid #eee;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #444;
+}
+
+.order-count,
+.order-amount {
+  align-self: center;
+  font-weight: 600;
+}
+
+.order-item select {
+  background-color: #ffe8e4;
+  border: 1px solid tomato;
+  width: max(12vw, 140px);
+  padding: 10px;
+  outline: none;
+  border-radius: 4px;
+  align-self: center;
+}
+
+/* mobile */
+@media (max-width: 1000px) {
+  .order-item {
+    grid-template-columns: 0.5fr 2fr 1fr;
+    gap: 16px;
+    padding: 14px 10px;
+    font-size: 12px;
+  }
+
+  .order-count {
+    display: none; /* space saving */
+  }
+
+  .order-item img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .order-item select {
+    padding: 6px 8px;
+    font-size: 12px;
+    width: 100%;
+  }
 }

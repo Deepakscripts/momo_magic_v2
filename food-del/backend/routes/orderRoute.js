@@ -1,14 +1,33 @@
-import express from 'express';
-import authMiddleware from '../middleware/auth.js';
-import { listOrders, placeOrder,updateStatus,userOrders, verifyOrder, placeOrderCod } from '../controllers/orderController.js';
+// backend/routes/orderRoute.js
+import express from "express";
+import authMiddleware from "../middleware/auth.js";
+import {
+  listOrders,
+  placeOrder,
+  updateStatus,
+  userOrders,
+  verifyOrder,
+  placeOrderCod,
+} from "../controllers/orderController.js";
 
 const orderRouter = express.Router();
 
-orderRouter.get("/list",listOrders);
-orderRouter.post("/userorders",authMiddleware,userOrders);
-orderRouter.post("/place",authMiddleware,placeOrder);
-orderRouter.post("/status",updateStatus);
-orderRouter.post("/verify",verifyOrder);
-orderRouter.post("/placecod",authMiddleware,placeOrderCod);
+// Admin: list all orders
+orderRouter.get("/list", listOrders);
+
+// User: list own orders
+orderRouter.post("/userorders", authMiddleware, userOrders);
+
+// Stripe path (kept for future): creates order, returns session URL
+orderRouter.post("/place", authMiddleware, placeOrder);
+
+// Update order status (admin panel)
+orderRouter.post("/status", updateStatus);
+
+// Stripe webhook-style verification endpoint used by frontend verify step
+orderRouter.post("/verify", verifyOrder);
+
+// Pay on Counter (POC): immediate order creation
+orderRouter.post("/placecod", authMiddleware, placeOrderCod);
 
 export default orderRouter;
