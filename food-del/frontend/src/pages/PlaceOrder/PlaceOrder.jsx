@@ -6,8 +6,15 @@ import { toast } from "react-toastify";
 import axios from "axios";
 
 const PlaceOrder = () => {
-  const { getTotalCartAmount, token, url, setCartItems, currency, cartItems, food_list } =
-    useContext(StoreContext);
+  const {
+    getTotalCartAmount,
+    token,
+    url,
+    setCartItems,
+    currency,
+    cartItems,
+    food_list,
+  } = useContext(StoreContext);
 
   const navigate = useNavigate();
 
@@ -23,6 +30,24 @@ const PlaceOrder = () => {
     const { name, value } = event.target;
     setData((prev) => ({ ...prev, [name]: value }));
   };
+
+  // compute a local snapshot of the cart for the backend (works for seed + DB items)
+  const clientCart = useMemo(() => {
+    const items = [];
+    Object.entries(cartItems || {}).forEach(([id, qty]) => {
+      const quantity = Number(qty) || 0;
+      if (quantity <= 0) return;
+      const prod = (food_list || []).find((p) => String(p._id) === String(id));
+      if (!prod) return;
+      items.push({
+        itemId: String(prod._id),
+        name: String(prod.name || ""),
+        price: Number(prod.price || 0),
+        quantity,
+      });
+    });
+    return items;
+  }, [cartItems, food_list]);
 
   const subtotal = useMemo(() => getTotalCartAmount(), [cartItems, food_list]);
   const total = subtotal; // no delivery fee
@@ -41,12 +66,19 @@ const PlaceOrder = () => {
       return;
     }
 
+    if (!clientCart.length) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
     try {
       const payload = {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
-        email: data.email.trim(),
+        email: (data.email || "").trim(),
         tableNumber: Number(data.tableNumber),
+        // send snapshot so backend can handle seed items too
+        clientCart,
       };
 
       const response = await axios.post(`${url}/api/order/placecod`, payload, {
