@@ -16,7 +16,7 @@ const pad = (n) => String(n).padStart(2, "0");
 const todayISO = () => new Date().toISOString().slice(0,10);
 const fmt = (n) => Number(n || 0).toLocaleString();
 
-/* Years: show from 2020 up to current year + 2 (covers 2027 and future years) */
+/* Years: 2020 .. current+2 */
 const years = (() => {
   const current = new Date().getFullYear();
   const start = 2020;
@@ -139,7 +139,7 @@ const useFetch = (fn, deps = []) => {
       finally { if (on) setLoading(false); }
     })();
     return () => { on = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
   return { data, loading };
 };
@@ -208,6 +208,44 @@ export default function Analytics() {
     return map;
   }, [comboMonth, comboYear]);
 
+  /* -------- NEW: Export contacts (date range) -------- */
+  const [ecFrom, setEcFrom] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0,10);
+  });
+  const [ecTo, setEcTo] = useState(todayISO());
+  const [contacts, setContacts] = useState([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+
+  async function fetchContacts() {
+    setContactsLoading(true);
+    try {
+      const r = await axios.get(`${url}/api/analytics/contacts${qs({ from: ecFrom, to: ecTo })}`);
+      setContacts(Array.isArray(r.data?.data) ? r.data.data : []);
+    } finally {
+      setContactsLoading(false);
+    }
+  }
+  useEffect(() => { fetchContacts(); /* auto refresh on change */ }, [ecFrom, ecTo]);
+
+  function downloadContactsCsv() {
+    const rows = contacts.map(c => ({
+      Phone: c.phoneNumber || "",
+      FirstName: c.firstName || "",
+      LastName: c.lastName || "",
+    }));
+    const header = ["Phone","FirstName","LastName"];
+    const csv = [header.join(","), ...rows.map(r =>
+      [r.Phone, r.FirstName, r.LastName]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    )].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `contacts_${ecFrom || "from"}_${ecTo || "to"}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   /* -------- transforms -------- */
   const kpis = useMemo(() => {
     const s = kpiNew.data?.summary || {};
@@ -254,7 +292,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* KPIs (top range only) */}
+      {/* KPIs */}
       <div className="kpi-row">
         {kpis.map((k) => (
           <div className="kpi kpi-glow" key={k.label}>
@@ -264,7 +302,32 @@ export default function Analytics() {
         ))}
       </div>
 
-      {/* New customers - independent month/year */}
+      {/* NEW: Export contacts */}
+      <div className="card">
+        <div className="card-head">
+          <div className="card-title">Export customer contacts</div>
+          <div className="export-controls">
+            <DateRange
+              from={ecFrom}
+              to={ecTo}
+              onChange={({from, to}) => {
+                if (from !== undefined) setEcFrom(from);
+                if (to !== undefined) setEcTo(to);
+              }}
+            />
+            <button
+              className="btn"
+              onClick={downloadContactsCsv}
+              disabled={contactsLoading || contacts.length === 0}
+              title={contactsLoading ? "Loading..." : `Export ${contacts.length} contacts`}
+            >
+              {contactsLoading ? "Preparing..." : `Export CSV (${contacts.length})`}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* New customers */}
       <div className="card">
         <div className="card-head">
           <div className="card-title">New customers</div>
@@ -297,7 +360,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Revenue by week - independent month/year */}
+      {/* Revenue by week */}
       <div className="card">
         <div className="card-head">
           <div className="card-title">Revenue by week ({revYear}-{revMonth})</div>
@@ -330,7 +393,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Top / Least dishes - separate controls */}
+      {/* Top / Least dishes */}
       <div className="grid-2">
         <div className="card">
           <div className="card-head">
@@ -385,7 +448,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Popular combos - legend moved OUTSIDE chart to avoid clipping */}
+      {/* Popular combos */}
       <div className="card">
         <div className="card-head">
           <div className="card-title">Popular item pairs</div>
@@ -415,7 +478,6 @@ export default function Analytics() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        {/* custom wrapping legend so items are fully visible */}
         <div className="legend-list">
           {pieData.map((d) => (
             <span className="legend-item" key={d.name}>

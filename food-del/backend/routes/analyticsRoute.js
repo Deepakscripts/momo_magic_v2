@@ -6,8 +6,9 @@ import {
   dishRank,
   revenueByWeek,
   popularCombos,
-  revenueTotal, 
+  revenueTotal,
   dishNameMap,
+  contactsByRange, // NEW
 } from "../controllers/analyticsController.js";
 
 const router = express.Router();
@@ -20,4 +21,8 @@ router.get("/revenue-month", revenueByWeek);
 router.get("/popular-combos", popularCombos);
 router.get("/revenue-total", revenueTotal);
 router.get("/dish-name-map", dishNameMap);
+
+// NEW: export unique contacts for a date range (based on orders)
+router.get("/contacts", contactsByRange);
+
 export default router;

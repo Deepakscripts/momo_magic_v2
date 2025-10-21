@@ -6,104 +6,95 @@ import Stripe from "stripe";
 import mongoose from "mongoose";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// config
 const currency = "inr";
-const frontend_URL = "http://localhost:5173";
+const frontend_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-// helper: only keep valid ObjectIds
 const isMongoId = (v) => mongoose.Types.ObjectId.isValid(String(v || ""));
 
+/* ---------------- helpers ---------------- */
+
 /**
- * Build an items snapshot and subtotal from the user's server cart.
+ * Build an items snapshot and subtotal from a server-side cart map.
  * cartMap: { [itemId]: quantity }
  * Returns { items:[{itemId,name,price,quantity}], amount:number }
  */
 async function buildItemsAndAmount(cartMap = {}) {
-  // keep only positive, valid ObjectId keys
-  const validIds = Object.keys(cartMap).filter(
+  const ids = Object.keys(cartMap).filter(
     (id) => Number(cartMap[id]) > 0 && isMongoId(id)
   );
-  if (validIds.length === 0) return { items: [], amount: 0 };
+  if (!ids.length) return { items: [], amount: 0 };
 
-  const foods = await foodModel.find({ _id: { $in: validIds } }).lean();
+  const foods = await foodModel.find({ _id: { $in: ids } }).lean();
   const byId = Object.fromEntries(foods.map((f) => [String(f._id), f]));
 
   let amount = 0;
   const items = [];
-  for (const id of validIds) {
-    const q = Number(cartMap[id]) || 0;
+  for (const id of ids) {
     const f = byId[id];
-    if (!f) continue; // ignore any id that didn't resolve
+    if (!f) continue;
+    const q = Number(cartMap[id]) || 0;
     const price = Number(f.price || 0);
     amount += price * q;
-    items.push({
-      itemId: id,
-      name: String(f.name || ""),
-      price,
-      quantity: q,
-    });
+    items.push({ itemId: id, name: String(f.name || ""), price, quantity: q });
   }
-
   return { items, amount };
 }
 
-/** Sanitize a client-provided items snapshot */
+/** Sanitize a client-provided cart snapshot */
 function coerceClientCart(clientCart = []) {
-  const items = [];
+  const out = [];
   let amount = 0;
-
   for (const raw of Array.isArray(clientCart) ? clientCart : []) {
     const quantity = Math.max(0, parseInt(raw?.quantity ?? 0, 10));
     const price = Number(raw?.price ?? 0);
     const name = String(raw?.name ?? "");
     const itemId = String(raw?.itemId ?? "");
-
     if (!quantity || !name) continue;
-    items.push({ itemId, name, price, quantity });
+    out.push({ itemId, name, price, quantity });
     amount += price * quantity;
   }
-
-  return { items, amount };
+  return { items: out, amount };
 }
 
+/* ---------------- place order (Stripe) ---------------- */
 /**
- * POST /api/order/place  (Stripe path, kept for future use)
- * Body: { firstName, lastName, email?, tableNumber, clientCart? }
- * Auth middleware sets req.body.userId
- * Creates order from SERVER CART snapshot or clientCart (no delivery fee),
- * payment=false, returns Stripe Checkout Session URL.
+ * POST /api/order/place
+ * Body: { userId, firstName, lastName, email?, tableNumber, clientCart? }
+ * Requires a valid existing userId. No guest auto-creation here.
  */
 const placeOrder = async (req, res) => {
   try {
     const { userId, firstName, lastName, email = "", tableNumber, clientCart } = req.body;
 
-    if (!firstName?.trim() || !lastName?.trim() || !tableNumber) {
+    if (!isMongoId(userId)) {
+      return res.json({ success: false, message: "Invalid user" });
+    }
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    if (!String(firstName || "").trim() || !String(lastName || "").trim() || !tableNumber) {
       return res.json({ success: false, message: "Missing required fields" });
     }
 
-    const user = await userModel.findById(userId);
-    if (!user) return res.json({ success: false, message: "User not found" });
-
-    // Prefer client snapshot if provided; fallback to server cart (ObjectId-only)
-    let items = [];
-    let amount = 0;
-
+    // Prefer client snapshot; fallback to server cart
+    let items = [], amount = 0;
     if (Array.isArray(clientCart) && clientCart.length) {
       ({ items, amount } = coerceClientCart(clientCart));
     } else {
       ({ items, amount } = await buildItemsAndAmount(user.cartData || {}));
     }
 
-    if (items.length === 0) {
+    if (!items.length) {
       return res.json({ success: false, message: "Cart is empty" });
     }
 
     const newOrder = await orderModel.create({
-      userId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: String(email || "").trim(),
+      userId: String(user._id),
+      firstName: String(firstName).trim(),
+      lastName:  String(lastName).trim(),
+      email:     String(email || "").trim(),
       tableNumber: Number(tableNumber),
       items,
       amount,
@@ -111,23 +102,25 @@ const placeOrder = async (req, res) => {
       status: "pending",
     });
 
-    const line_items = items.map((item) => ({
+    const line_items = items.map((i) => ({
       price_data: {
         currency,
-        product_data: { name: item.name },
-        unit_amount: Math.round(Number(item.price || 0) * 100),
+        product_data: { name: i.name },
+        unit_amount: Math.round(Number(i.price || 0) * 100),
       },
-      quantity: item.quantity,
+      quantity: i.quantity,
     }));
 
     const session = await stripe.checkout.sessions.create({
       success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
-      cancel_url: `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
+      cancel_url:  `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
       line_items,
       mode: "payment",
     });
 
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    // clear server cart after creating the session
+    await userModel.findByIdAndUpdate(user._id, { cartData: {} });
+
     res.json({ success: true, session_url: session.url });
   } catch (error) {
     console.error(error);
@@ -135,50 +128,52 @@ const placeOrder = async (req, res) => {
   }
 };
 
+/* ---------------- place order (Pay on Counter) ---------------- */
 /**
- * POST /api/order/place-cod  (POC: Pay On Counter)
- * Body: { firstName, lastName, email?, tableNumber, clientCart? }
- * Creates order from SERVER CART snapshot or clientCart, marks payment=true,
- * clears cart, returns success.
+ * POST /api/order/place-cod
+ * Body: { userId, firstName, lastName, email?, tableNumber, clientCart? }
+ * Requires a valid existing userId. No guest auto-creation here.
  */
 const placeOrderCod = async (req, res) => {
   try {
     const { userId, firstName, lastName, email = "", tableNumber, clientCart } = req.body;
 
-    if (!firstName?.trim() || !lastName?.trim() || !tableNumber) {
+    if (!isMongoId(userId)) {
+      return res.json({ success: false, message: "Invalid user" });
+    }
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    if (!String(firstName || "").trim() || !String(lastName || "").trim() || !tableNumber) {
       return res.json({ success: false, message: "Missing required fields" });
     }
 
-    const user = await userModel.findById(userId);
-    if (!user) return res.json({ success: false, message: "User not found" });
-
-    // Prefer client snapshot if provided; fallback to server cart (ObjectId-only)
-    let items = [];
-    let amount = 0;
-
+    let items = [], amount = 0;
     if (Array.isArray(clientCart) && clientCart.length) {
       ({ items, amount } = coerceClientCart(clientCart));
     } else {
       ({ items, amount } = await buildItemsAndAmount(user.cartData || {}));
     }
 
-    if (items.length === 0) {
+    if (!items.length) {
       return res.json({ success: false, message: "Cart is empty" });
     }
 
     await orderModel.create({
-      userId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: String(email || "").trim(),
+      userId: String(user._id),
+      firstName: String(firstName).trim(),
+      lastName:  String(lastName).trim(),
+      email:     String(email || "").trim(),
       tableNumber: Number(tableNumber),
       items,
       amount,
-      payment: true, // POC: consider it "paid" operationally
+      payment: true,     // treated as paid operationally
       status: "pending",
     });
 
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+    await userModel.findByIdAndUpdate(user._id, { cartData: {} });
 
     res.json({ success: true, message: "Order Placed" });
   } catch (error) {
@@ -187,10 +182,26 @@ const placeOrderCod = async (req, res) => {
   }
 };
 
-// Listing Order for Admin panel
-const listOrders = async (_req, res) => {
+/* ---------------- list with date filter (NEW) ---------------- */
+/**
+ * GET /api/order/list?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * All params optional. If both missing, returns all orders (desc).
+ */
+const listOrders = async (req, res) => {
   try {
-    const orders = await orderModel.find({}).sort({ createdAt: -1 });
+    const { from, to } = req.query;
+    const q = {};
+    if (from || to) {
+      q.createdAt = {};
+      if (from) q.createdAt.$gte = new Date(from);
+      if (to) {
+        const t = new Date(to);
+        // if only date given, include the whole day
+        if (to.length <= 10) t.setHours(23, 59, 59, 999);
+        q.createdAt.$lte = t;
+      }
+    }
+    const orders = await orderModel.find(q).sort({ createdAt: -1 });
     res.json({ success: true, data: orders });
   } catch (error) {
     console.error(error);
@@ -198,7 +209,6 @@ const listOrders = async (_req, res) => {
   }
 };
 
-// User Orders for Frontend
 const userOrders = async (req, res) => {
   try {
     const orders = await orderModel.find({ userId: req.body.userId }).sort({ createdAt: -1 });

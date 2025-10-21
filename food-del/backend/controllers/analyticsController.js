@@ -29,7 +29,6 @@ function rangeQuery({ from, to, month }) {
   return query;
 }
 function clampRange(aStart, aEnd, bStart, bEnd) {
-  // intersection of [aStart, aEnd] and [bStart, bEnd]
   const s = new Date(Math.max(aStart.getTime(), bStart.getTime()));
   const e = new Date(Math.min(aEnd.getTime(), bEnd.getTime()));
   return s <= e ? { start: s, end: e } : null;
@@ -40,19 +39,12 @@ function startOfDay(d) {
   return x;
 }
 
-/* ===== 1) New customers (range-aware) =====
-   Supports:
-   - ?from=YYYY-MM-DD&to=YYYY-MM-DD  (summary clamped to that range)
-   - ?month=YYYY-MM                  (summary clamped to that month)
-   - else default: last 28 days ending today
-*/
+/* ===== 1) New customers ===== */
 export async function newCustomers(req, res) {
   try {
     const { from, to, month } = req.query;
 
-    // Determine selected window for series + summary
     let windowStart, windowEnd;
-
     if (month) {
       const r = monthRange(month);
       if (r) { windowStart = r.start; windowEnd = new Date(r.end.getTime() - 1); }
@@ -61,14 +53,12 @@ export async function newCustomers(req, res) {
       windowEnd = to ? new Date(to) : new Date();
       if (!to || to.length <= 10) windowEnd.setHours(23, 59, 59, 999);
     } else {
-      // default window = last 28 days up to now
       windowEnd = new Date();
       windowStart = new Date(windowEnd);
       windowStart.setDate(windowEnd.getDate() - 27);
       windowStart = startOfDay(windowStart);
     }
 
-    // Series: by day within window (or within explicit match if provided)
     const matchSeries = { createdAt: { $gte: windowStart, $lte: windowEnd } };
     const series = await userModel.aggregate([
       { $match: matchSeries },
@@ -92,12 +82,10 @@ export async function newCustomers(req, res) {
       { $sort: { date: 1 } },
     ]);
 
-    // Summary (range-aware)
     const now = new Date();
     const todayStart = startOfDay(now);
     const todayEnd = new Date(todayStart); todayEnd.setHours(23, 59, 59, 999);
-
-    const last7Start = startOfDay(new Date(now)); last7Start.setDate(now.getDate() - 6);
+    const last7Start  = startOfDay(new Date(now)); last7Start.setDate(now.getDate() - 6);
     const last14Start = startOfDay(new Date(now)); last14Start.setDate(now.getDate() - 13);
     const last21Start = startOfDay(new Date(now)); last21Start.setDate(now.getDate() - 20);
     const last28Start = startOfDay(new Date(now)); last28Start.setDate(now.getDate() - 27);
@@ -105,8 +93,6 @@ export async function newCustomers(req, res) {
     const fetchCount = async (s, e) =>
       userModel.countDocuments({ createdAt: { $gte: s, $lte: e } });
 
-    // Clamp each “today/last N” window to the selected window so
-    // if your selection is in 2006, the intersection is empty -> 0
     const clampAndCount = async (s, e) => {
       const inter = clampRange(s, e, windowStart, windowEnd);
       if (!inter) return 0;
@@ -128,7 +114,7 @@ export async function newCustomers(req, res) {
   }
 }
 
-/* ===== 2) Repeat rate (respects from/to/month) ===== */
+/* ===== 2) Repeat rate ===== */
 export async function repeatRate(req, res) {
   try {
     const { from, to, month } = req.query;
@@ -153,7 +139,7 @@ export async function repeatRate(req, res) {
   }
 }
 
-/* ===== 3) Top/Least sellers (from/to/month) ===== */
+/* ===== 3) Top/Least sellers ===== */
 export async function dishRank(req, res) {
   try {
     const { from, to, month } = req.query;
@@ -191,7 +177,7 @@ export async function dishRank(req, res) {
   }
 }
 
-/* ===== 4) Revenue by ISO week for a month ===== */
+/* ===== 4) Revenue by ISO week ===== */
 export async function revenueByWeek(req, res) {
   try {
     const monthStr = String(req.query.month || "");
@@ -220,7 +206,7 @@ export async function revenueByWeek(req, res) {
   }
 }
 
-/* ===== 5) Popular pairs (from/to/month) ===== */
+/* ===== 5) Popular pairs ===== */
 export async function popularCombos(req, res) {
   try {
     const { from, to, month } = req.query;
@@ -254,7 +240,7 @@ export async function popularCombos(req, res) {
   }
 }
 
-/* ===== 6) Total revenue over range (for KPI) ===== */
+/* ===== 6) Total revenue over range ===== */
 export async function revenueTotal(req, res) {
   try {
     const { from, to, month } = req.query;
@@ -271,7 +257,7 @@ export async function revenueTotal(req, res) {
   }
 }
 
-/* ===== 7) Dish name map for combos ===== */
+/* ===== 7) Dish name map ===== */
 export async function dishNameMap(req, res) {
   try {
     const { from, to, month } = req.query;
@@ -288,6 +274,67 @@ export async function dishNameMap(req, res) {
       { $project: { _id: 0, id: "$_id", name: 1 } },
     ]);
     res.json({ success: true, data: rows });
+  } catch (e) {
+    console.error(e);
+    res.json({ success: false, message: "Error" });
+  }
+}
+
+/* ===== 8) FIXED: Unique contacts by order date range =====
+   - Converts order.userId (string) to ObjectId for lookup
+   - Ignores invalid ObjectIds gracefully
+   - De-duplicates by phoneNumber
+*/
+export async function contactsByRange(req, res) {
+  try {
+    const { from, to, month } = req.query;
+    const match = rangeQuery({ from, to, month });
+
+    const rows = await orderModel.aggregate([
+      Object.keys(match).length ? { $match: match } : { $match: {} },
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: "$userId", firstName: { $first: "$firstName" }, lastName: { $first: "$lastName" } } },
+      // Safely convert string ID to ObjectId; invalid strings become null
+      {
+        $addFields: {
+          userObjId: {
+            $convert: { input: "$_id", to: "objectId", onError: null, onNull: null }
+          }
+        }
+      },
+      { $match: { userObjId: { $ne: null } } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userObjId",
+          foreignField: "_id",
+          as: "u"
+        }
+      },
+      { $set: { phoneNumber: { $first: "$u.phoneNumber" } } },
+      {
+        $project: {
+          _id: 0,
+          firstName: { $ifNull: ["$firstName", ""] },
+          lastName:  { $ifNull: ["$lastName", ""] },
+          phoneNumber: 1
+        }
+      },
+      { $match: { phoneNumber: { $type: "string", $ne: "" } } }
+    ]);
+
+    // De-duplicate by phone just in case
+    const seen = new Set();
+    const unique = [];
+    for (const r of rows) {
+      const key = (r.phoneNumber || "").trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        unique.push(r);
+      }
+    }
+
+    res.json({ success: true, data: unique });
   } catch (e) {
     console.error(e);
     res.json({ success: false, message: "Error" });
