@@ -7,7 +7,11 @@ import userRouter from "./routes/userRoute.js";
 import foodRouter from "./routes/foodRoute.js";
 import cartRouter from "./routes/cartRoute.js";
 import orderRouter from "./routes/orderRoute.js";
-import smsRouter from "./routes/smsRoute.js"; // <<< renamed route
+import smsRouter from "./routes/smsRoute.js";
+
+// NEW: analytics + dev seed routes
+import analyticsRouter from "./routes/analyticsRoute.js";
+import devRouter from "./routes/devRoute.js";
 
 // app config
 const app = express();
@@ -21,7 +25,7 @@ const port = process.env.PORT || 4000;
 const defaultOrigins = ["http://localhost:5173", "http://localhost:5174"];
 const envOrigins = (process.env.FRONTEND_URLS || "")
   .split(",")
-  .map(s => s.trim())
+  .map((s) => s.trim())
   .filter(Boolean);
 const allowedOrigins = envOrigins.length ? envOrigins : defaultOrigins;
 
@@ -53,7 +57,13 @@ app.use("/api/food", foodRouter);
 app.use("/images", express.static("uploads"));
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
-app.use("/api/sms", smsRouter); // <<< mounted at /api/sms
+app.use("/api/sms", smsRouter);
+
+// NEW: analytics endpoints (charts on admin panel call these)
+app.use("/api/analytics", analyticsRouter);
+
+// NEW: dev-only seed/purge endpoints (guarded by ALLOW_DEV_SEED=true)
+app.use("/api/dev", devRouter);
 
 // root
 app.get("/", (_req, res) => {
