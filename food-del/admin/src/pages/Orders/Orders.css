@@ -82,3 +82,26 @@
     width: 100%;
   }
 }
+
+/* Improve dropdown text visibility */
+.order-item select {
+  background-color: #ffe8e4;
+  border: 1px solid tomato;
+  width: max(12vw, 140px);
+  padding: 10px;
+  outline: none;
+  border-radius: 4px;
+  align-self: center;
+  white-space: normal;
+  text-overflow: ellipsis;
+}
+
+/* Fully responsive select */
+@media (max-width: 700px) {
+  .order-item select {
+    width: 100%;
+    min-width: 120px;
+    font-size: 12px;
+    padding: 8px;
+  }
+}

@@ -1,17 +1,21 @@
 :root{
-  --sidebar-width: 260px; /* used when open on small screens */
+  --sidebar-width: 260px;
 }
 
-/* desktop layout (takes space) */
+/* Desktop: static column that takes space */
 .sidebar{
   width: 18%;
   min-height: 100vh;
   border: 1.5px solid #A9A9A9;
   border-top: 0;
+  background: #fff;
   font-size: max(1vw,10px);
 }
 
-/* links */
+.sidebar-header{
+  display: none; /* desktop doesn't need close button/header */
+}
+
 .sidebar-options{
   padding-top: 50px;
   padding-left: 20%;
@@ -19,6 +23,7 @@
   flex-direction: column;
   gap: 20px;
 }
+
 .sidebar-option{
   display: flex;
   align-items: center;
@@ -32,13 +37,11 @@
 .sidebar-option img{ width:20px; }
 .sidebar-option.active{ background:#fff0ed; border-color:tomato; }
 
-/* -------- mobile drawer mode -------- */
-.sidebar-overlay{
-  display:none;
-}
+/* Overlay hidden by default on desktop */
+.sidebar-overlay{ display:none; }
 
+/* -------- Mobile: turn into drawer -------- */
 @media (max-width: 900px){
-  /* turn sidebar into fixed drawer that doesn't push content */
   .sidebar{
     position: fixed;
     top: 0;
@@ -46,15 +49,32 @@
     width: var(--sidebar-width);
     max-width: 80%;
     height: 100vh;
-    background: #fff;
     z-index: 1100;
     transform: translateX(-100%);
     transition: transform .25s ease;
     border-right: 1.5px solid #A9A9A9;
     border-left: 0;
   }
-  .sidebar.open{
-    transform: translateX(0);
+  .sidebar.open{ transform: translateX(0); }
+
+  .sidebar-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eee;
+  }
+  .sidebar-header h2{
+    margin: 0;
+    font-size: 16px;
+    color: #444;
+  }
+  .close-btn{
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
   }
 
   .sidebar-overlay{
@@ -64,10 +84,8 @@
     z-index: 1000;
     display: none;
   }
-  .sidebar-overlay.show{
-    display:block;
-  }
+  .sidebar-overlay.show{ display:block; }
 
-  /* compact list: hide text to save space */
-  .sidebar-option p{ display: none; }
+  /* keep labels visible on mobile drawer */
+  .sidebar-option p{ display: block; }
 }

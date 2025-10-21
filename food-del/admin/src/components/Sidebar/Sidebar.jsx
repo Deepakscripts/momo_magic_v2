@@ -3,15 +3,24 @@ import './Sidebar.css'
 import { assets } from '../../assets/assets'
 import { NavLink } from 'react-router-dom'
 
-const Sidebar = ({ isOpen, onClose }) => {
-  const handleNav = () => { if (onClose) onClose() }
+/*
+  Desktop: this renders as a normal static sidebar.
+  Mobile:  becomes a slide-in drawer. isOpen/onClose control it.
+*/
+const Sidebar = ({ isOpen = false, onClose = () => {} }) => {
+  const handleNav = () => onClose()
 
   return (
     <>
-      {/* overlay for small screens */}
+      {/* overlay only on mobile via CSS */}
       <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={onClose} />
 
       <div className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <h2>Menu</h2>
+          <button className="close-btn" onClick={onClose} aria-label="Close menu">✕</button>
+        </div>
+
         <div className="sidebar-options">
           <NavLink to='/add' className="sidebar-option" onClick={handleNav}>
             <img src={assets.add_icon} alt="" />

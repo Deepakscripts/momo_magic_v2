@@ -5,6 +5,7 @@ import { assets } from '../../assets/assets'
 const Navbar = ({ onHamburgerClick }) => {
   return (
     <div className='navbar'>
+      {/* Hamburger only shows on small screens */}
       <button
         className="hamburger"
         aria-label="Open menu"

@@ -10,19 +10,17 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const App = () => {
+  // Single source of truth for mobile drawer
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const openSidebar = () => setSidebarOpen(true)
-  const closeSidebar = () => setSidebarOpen(false)
-  const toggleSidebar = () => setSidebarOpen(s => !s)
 
   return (
     <div className='app'>
       <ToastContainer />
-      <Navbar onHamburgerClick={toggleSidebar} />
+      <Navbar onHamburgerClick={() => setSidebarOpen(s => !s)} />
       <hr />
       <div className="app-content">
-        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+        {/* Desktop: static; Mobile: drawer controlled by props */}
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <Routes>
           <Route path="/" element={<Navigate to="/analytics" replace />} />
           <Route path="/add" element={<Add />} />

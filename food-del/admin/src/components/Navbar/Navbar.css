@@ -1,8 +1,11 @@
 .navbar{
+  position: relative;
+  z-index: 1200; /* floats above drawer overlay on mobile */
   display:flex;
   justify-content:space-between;
   align-items:center;
   padding:8px 4%;
+  background: #fff;
 }
 
 .navbar .logo{ width:max(10%,80px); }
@@ -10,7 +13,7 @@
 
 /* hamburger */
 .hamburger{
-  display:none;
+  display:none;             /* hidden on desktop */
   width:34px;
   height:28px;
   padding:0;
@@ -26,7 +29,7 @@
   border-radius:2px;
 }
 
-/* show hamburger on small screens */
+/* show hamburger on small screens only */
 @media (max-width: 900px){
   .hamburger{ display:block; }
 }
