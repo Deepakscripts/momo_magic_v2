@@ -4,7 +4,7 @@ import axios from "axios";
 import { url } from "../../assets/assets";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, PieChart, Pie, Legend
+  BarChart, Bar, PieChart, Pie
 } from "recharts";
 import DatePicker from "react-datepicker";
 import { format, parseISO } from "date-fns";
@@ -15,12 +15,17 @@ const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 const pad = (n) => String(n).padStart(2, "0");
 const todayISO = () => new Date().toISOString().slice(0,10);
 const fmt = (n) => Number(n || 0).toLocaleString();
+
+/* Years: show from 2020 up to current year + 2 (covers 2027 and future years) */
 const years = (() => {
-  const y = new Date().getFullYear();
+  const current = new Date().getFullYear();
+  const start = 2020;
+  const end = current + 2;
   const arr = [];
-  for (let i = y + 1; i >= y - 5; i--) arr.push(String(i));
+  for (let y = end; y >= start; y--) arr.push(String(y));
   return arr;
 })();
+
 const qs = (obj) => {
   const p = [];
   Object.entries(obj).forEach(([k,v]) => {
@@ -54,7 +59,6 @@ function DateRange({ from, to, onChange }) {
   const [start, setStart] = useState(toDateObj(from));
   const [end, setEnd] = useState(toDateObj(to));
 
-  // keep local in sync if parent changes externally
   useEffect(() => setStart(toDateObj(from)), [from]);
   useEffect(() => setEnd(toDateObj(to)), [to]);
 
@@ -64,7 +68,6 @@ function DateRange({ from, to, onChange }) {
       onChange({ from: "" });
       return;
     }
-    // if user picks a start after current end, swap to keep range valid
     if (end && d > end) {
       setStart(end);
       setEnd(d);
@@ -382,7 +385,7 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* Popular combos - names + colors */}
+      {/* Popular combos - legend moved OUTSIDE chart to avoid clipping */}
       <div className="card">
         <div className="card-head">
           <div className="card-title">Popular item pairs</div>
@@ -397,9 +400,8 @@ export default function Analytics() {
           />
         </div>
         <div className="chart">
-          <ResponsiveContainer width="100%" height={360}>
+          <ResponsiveContainer width="100%" height={320}>
             <PieChart>
-              <Legend verticalAlign="bottom" height={36} />
               <Pie
                 data={pieData}
                 dataKey="value"
@@ -412,6 +414,15 @@ export default function Analytics() {
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
+        </div>
+        {/* custom wrapping legend so items are fully visible */}
+        <div className="legend-list">
+          {pieData.map((d) => (
+            <span className="legend-item" key={d.name}>
+              <i style={{ background: d.fill }} />
+              {d.name}
+            </span>
+          ))}
         </div>
       </div>
     </div>

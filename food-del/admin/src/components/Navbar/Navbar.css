@@ -1,12 +1,32 @@
 .navbar{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 4%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 4%;
 }
-.navbar .logo{
-    width: max(10%,80px);
+
+.navbar .logo{ width:max(10%,80px); }
+.navbar .profile{ width:40px; }
+
+/* hamburger */
+.hamburger{
+  display:none;
+  width:34px;
+  height:28px;
+  padding:0;
+  border:none;
+  background:transparent;
+  cursor:pointer;
 }
-.navbar .profile{
-    width: 40px;
+.hamburger span{
+  display:block;
+  height:3px;
+  margin:5px 0;
+  background:#222;
+  border-radius:2px;
+}
+
+/* show hamburger on small screens */
+@media (max-width: 900px){
+  .hamburger{ display:block; }
 }
