@@ -6,6 +6,8 @@ import {
   dishRank,
   revenueByWeek,
   popularCombos,
+  revenueTotal, 
+  dishNameMap,
 } from "../controllers/analyticsController.js";
 
 const router = express.Router();
@@ -16,5 +18,6 @@ router.get("/top-dishes", (req, res, next) => { req.query.order = "desc"; next()
 router.get("/least-dishes", (req, res, next) => { req.query.order = "asc"; next(); }, dishRank);
 router.get("/revenue-month", revenueByWeek);
 router.get("/popular-combos", popularCombos);
-
+router.get("/revenue-total", revenueTotal);
+router.get("/dish-name-map", dishNameMap);
 export default router;
