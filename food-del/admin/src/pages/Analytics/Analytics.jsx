@@ -14,9 +14,15 @@ import "react-datepicker/dist/react-datepicker.css";
 const months = ["01","02","03","04","05","06","07","08","09","10","11","12"];
 const pad = (n) => String(n).padStart(2, "0");
 const todayISO = () => new Date().toISOString().slice(0,10);
-const fmt = (n) => Number(n || 0).toLocaleString();
 
-/* Years: 2020 .. current+2 */
+/** Indian Rupee display */
+const fmt = (n) => {
+  if (n == null || isNaN(n)) return "₹0";
+  return "₹" + Number(n).toLocaleString("en-IN");
+};
+/** Prevent Excel from auto-sci-notating phones; invisible LRM keeps it text. */
+const excelText = (s) => `\u200E${s ?? ""}`;
+
 const years = (() => {
   const current = new Date().getFullYear();
   const start = 2020;
@@ -51,7 +57,6 @@ function MonthYear({ label, valueMonth, valueYear, onChange }) {
   );
 }
 
-/* Two independent calendars: From and To */
 function DateRange({ from, to, onChange }) {
   const toDateObj = (iso) => (iso ? parseISO(iso) : null);
   const toISO = (d) => (d ? format(d, "yyyy-MM-dd") : "");
@@ -63,66 +68,32 @@ function DateRange({ from, to, onChange }) {
   useEffect(() => setEnd(toDateObj(to)), [to]);
 
   const onFromChange = (d) => {
-    if (!d) {
-      setStart(null);
-      onChange({ from: "" });
-      return;
-    }
+    if (!d) { setStart(null); onChange({ from: "" }); return; }
     if (end && d > end) {
-      setStart(end);
-      setEnd(d);
+      setStart(end); setEnd(d);
       onChange({ from: toISO(end), to: toISO(d) });
-    } else {
-      setStart(d);
-      onChange({ from: toISO(d) });
-    }
+    } else { setStart(d); onChange({ from: toISO(d) }); }
   };
 
   const onToChange = (d) => {
-    if (!d) {
-      setEnd(null);
-      onChange({ to: "" });
-      return;
-    }
+    if (!d) { setEnd(null); onChange({ to: "" }); return; }
     if (start && d < start) {
-      setEnd(start);
-      setStart(d);
+      setEnd(start); setStart(d);
       onChange({ from: toISO(d), to: toISO(start) });
-    } else {
-      setEnd(d);
-      onChange({ to: toISO(d) });
-    }
+    } else { setEnd(d); onChange({ to: toISO(d) }); }
   };
 
   return (
     <div className="control">
       <label>Date range</label>
       <div className="control-row daterow">
-        <DatePicker
-          selected={start}
-          onChange={onFromChange}
-          dateFormat="dd-MM-yyyy"
-          placeholderText="From"
-          showMonthDropdown
-          showYearDropdown
-          dropdownMode="select"
-          calendarStartDay={1}
-          showPopperArrow={false}
-          className="date-input"
-        />
+        <DatePicker selected={start} onChange={onFromChange} dateFormat="dd-MM-yyyy"
+          placeholderText="From" showMonthDropdown showYearDropdown dropdownMode="select"
+          calendarStartDay={1} showPopperArrow={false} className="date-input" />
         <span>to</span>
-        <DatePicker
-          selected={end}
-          onChange={onToChange}
-          dateFormat="dd-MM-yyyy"
-          placeholderText="To"
-          showMonthDropdown
-          showYearDropdown
-          dropdownMode="select"
-          calendarStartDay={1}
-          showPopperArrow={false}
-          className="date-input"
-        />
+        <DatePicker selected={end} onChange={onToChange} dateFormat="dd-MM-yyyy"
+          placeholderText="To" showMonthDropdown showYearDropdown dropdownMode="select"
+          calendarStartDay={1} showPopperArrow={false} className="date-input" />
       </div>
     </div>
   );
@@ -145,7 +116,7 @@ const useFetch = (fn, deps = []) => {
 };
 
 export default function Analytics() {
-  /* -------- KPIs (independent range) -------- */
+  /* -------- KPI range -------- */
   const [kFrom, setKFrom] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0,10);
   });
@@ -163,7 +134,7 @@ export default function Analytics() {
     return r.data?.data || { total: 0 };
   }, [kFrom, kTo]);
 
-  /* -------- New Customers (own month/year) -------- */
+  /* -------- New Customers -------- */
   const now = new Date();
   const [ncMonth, setNcMonth] = useState(pad(now.getMonth()+1));
   const [ncYear, setNcYear] = useState(String(now.getFullYear()));
@@ -172,7 +143,7 @@ export default function Analytics() {
     return r.data?.data || { series: [], summary: {} };
   }, [ncMonth, ncYear]);
 
-  /* -------- Revenue by week (own month/year) -------- */
+  /* -------- Revenue by week -------- */
   const [revMonth, setRevMonth] = useState(pad(now.getMonth()+1));
   const [revYear, setRevYear] = useState(String(now.getFullYear()));
   const rev = useFetch(async () => {
@@ -180,7 +151,7 @@ export default function Analytics() {
     return r.data?.data || { rows: [] };
   }, [revMonth, revYear]);
 
-  /* -------- Top/Least sellers (separate controls) -------- */
+  /* -------- Top/Least sellers -------- */
   const [topMonth, setTopMonth] = useState(pad(now.getMonth()+1));
   const [topYear,  setTopYear]  = useState(String(now.getFullYear()));
   const [leastMonth, setLeastMonth] = useState(pad(now.getMonth()+1));
@@ -194,7 +165,7 @@ export default function Analytics() {
     return Array.isArray(r.data?.data) ? r.data.data : [];
   }, [leastMonth, leastYear]);
 
-  /* -------- Popular combos (own month/year + names) -------- */
+  /* -------- Popular combos -------- */
   const [comboMonth, setComboMonth] = useState(pad(now.getMonth()+1));
   const [comboYear,  setComboYear]  = useState(String(now.getFullYear()));
   const combos = useFetch(async () => {
@@ -203,45 +174,64 @@ export default function Analytics() {
   }, [comboMonth, comboYear]);
   const nameMap = useFetch(async () => {
     const r = await axios.get(`${url}/api/analytics/dish-name-map${qs({ month: `${comboYear}-${comboMonth}` })}`);
-    const map = {};
-    (r.data?.data || []).forEach(x => { map[x.id] = x.name; });
+    const map = {}; (r.data?.data || []).forEach(x => { map[x.id] = x.name; });
     return map;
   }, [comboMonth, comboYear]);
 
-  /* -------- NEW: Export contacts (date range) -------- */
+  /* -------- Export contacts (PER-ORDER) -------- */
   const [ecFrom, setEcFrom] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 28); return d.toISOString().slice(0,10);
   });
   const [ecTo, setEcTo] = useState(todayISO());
-  const [contacts, setContacts] = useState([]);
-  const [contactsLoading, setContactsLoading] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
-  async function fetchContacts() {
-    setContactsLoading(true);
+  async function fetchOrdersForExport() {
+    setOrdersLoading(true);
     try {
       const r = await axios.get(`${url}/api/analytics/contacts${qs({ from: ecFrom, to: ecTo })}`);
-      setContacts(Array.isArray(r.data?.data) ? r.data.data : []);
+      setOrders(Array.isArray(r.data?.data) ? r.data.data : []);
     } finally {
-      setContactsLoading(false);
+      setOrdersLoading(false);
     }
   }
-  useEffect(() => { fetchContacts(); /* auto refresh on change */ }, [ecFrom, ecTo]);
+  useEffect(() => { fetchOrdersForExport(); }, [ecFrom, ecTo]);
 
   function downloadContactsCsv() {
-    const rows = contacts.map(c => ({
-      Phone: c.phoneNumber || "",
-      FirstName: c.firstName || "",
-      LastName: c.lastName || "",
-    }));
-    const header = ["Phone","FirstName","LastName"];
-    const csv = [header.join(","), ...rows.map(r =>
-      [r.Phone, r.FirstName, r.LastName]
-        .map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
-    )].join("\n");
+    const header = [
+      "S.No","Date","Time","FirstName","LastName","PhoneNumber","TableNumber","FoodItems","Quantities","TotalAmount"
+    ];
+    const rows = orders.map((o, i) => {
+      const dt = new Date(o.createdAt || Date.now());
+      const date = dt.toISOString().slice(0,10);
+      const time = dt.toTimeString().slice(0,5);
+      const items = Array.isArray(o.items) ? o.items : [];
+      const foodNames = items.map(it => it?.name ?? "").join("|");
+      const quantities = items.map(it => Number(it?.quantity ?? 0)).join("|");
+      const total = Number(o.amount || 0);
+      return [
+        i + 1,
+        date,
+        time,
+        o.firstName || "",
+        o.lastName || "",
+        excelText(o.phoneNumber || ""), // Excel-safe, still parseable
+        o.tableNumber ?? "",
+        foodNames,
+        quantities,
+        total
+      ];
+    });
+
+    const csv =
+      [header.join(",")]
+        .concat(rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")))
+        .join("\n");
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `contacts_${ecFrom || "from"}_${ecTo || "to"}.csv`;
+    a.download = `customer_data_${ecFrom}_${ecTo}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -297,15 +287,17 @@ export default function Analytics() {
         {kpis.map((k) => (
           <div className="kpi kpi-glow" key={k.label}>
             <div className="kpi-label">{k.label}</div>
-            <div className="kpi-value">{fmt(k.value)}</div>
+            <div className="kpi-value">
+              {k.label.startsWith("Rev") ? fmt(k.value) : k.value}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* NEW: Export contacts */}
+      {/* Export customer contacts */}
       <div className="card">
         <div className="card-head">
-          <div className="card-title">Export customer contacts</div>
+          <div className="card-title">Export customer Details</div>
           <div className="export-controls">
             <DateRange
               from={ecFrom}
@@ -318,10 +310,10 @@ export default function Analytics() {
             <button
               className="btn"
               onClick={downloadContactsCsv}
-              disabled={contactsLoading || contacts.length === 0}
-              title={contactsLoading ? "Loading..." : `Export ${contacts.length} contacts`}
+              disabled={ordersLoading || orders.length === 0}
+              title={ordersLoading ? "Loading..." : `Export ${orders.length} rows`}
             >
-              {contactsLoading ? "Preparing..." : `Export CSV (${contacts.length})`}
+              {ordersLoading ? "Preparing..." : `Export CSV (${orders.length})`}
             </button>
           </div>
         </div>
@@ -363,7 +355,7 @@ export default function Analytics() {
       {/* Revenue by week */}
       <div className="card">
         <div className="card-head">
-          <div className="card-title">Revenue by week ({revYear}-{revMonth})</div>
+          <div className="card-title">Revenue by week ({revYear}-{revMonth}) — ₹</div>
           <MonthYear
             label="Select month"
             valueMonth={revMonth}
@@ -386,7 +378,7 @@ export default function Analytics() {
               <CartesianGrid strokeDasharray="3 3" opacity={0.3}/>
               <XAxis dataKey="week" />
               <YAxis />
-              <Tooltip />
+              <Tooltip formatter={(v)=>fmt(v)} />
               <Bar dataKey="revenue" fill="url(#gradBar)" radius={[8,8,0,0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -465,15 +457,7 @@ export default function Analytics() {
         <div className="chart">
           <ResponsiveContainer width="100%" height={320}>
             <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                outerRadius={130}
-                stroke="#fff"
-                strokeWidth={1}
-                isAnimationActive
-              />
+              <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={130} stroke="#fff" strokeWidth={1} isAnimationActive />
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>

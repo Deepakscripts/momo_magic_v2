@@ -280,10 +280,8 @@ export async function dishNameMap(req, res) {
   }
 }
 
-/* ===== 8) FIXED: Unique contacts by order date range =====
-   - Converts order.userId (string) to ObjectId for lookup
-   - Ignores invalid ObjectIds gracefully
-   - De-duplicates by phoneNumber
+/* ===== 8) Contacts export (PER-ORDER rows, full info) =====
+   Returns: createdAt, first/last name, phoneNumber, tableNumber, items[], amount
 */
 export async function contactsByRange(req, res) {
   try {
@@ -293,16 +291,14 @@ export async function contactsByRange(req, res) {
     const rows = await orderModel.aggregate([
       Object.keys(match).length ? { $match: match } : { $match: {} },
       { $sort: { createdAt: -1 } },
-      { $group: { _id: "$userId", firstName: { $first: "$firstName" }, lastName: { $first: "$lastName" } } },
-      // Safely convert string ID to ObjectId; invalid strings become null
+      // Convert string userId to ObjectId when possible
       {
         $addFields: {
           userObjId: {
-            $convert: { input: "$_id", to: "objectId", onError: null, onNull: null }
+            $convert: { input: "$userId", to: "objectId", onError: null, onNull: null }
           }
         }
       },
-      { $match: { userObjId: { $ne: null } } },
       {
         $lookup: {
           from: "users",
@@ -315,26 +311,18 @@ export async function contactsByRange(req, res) {
       {
         $project: {
           _id: 0,
+          createdAt: 1,
           firstName: { $ifNull: ["$firstName", ""] },
           lastName:  { $ifNull: ["$lastName", ""] },
-          phoneNumber: 1
+          phoneNumber: { $ifNull: ["$phoneNumber", ""] },
+          tableNumber: 1,
+          items: 1,
+          amount: 1
         }
-      },
-      { $match: { phoneNumber: { $type: "string", $ne: "" } } }
+      }
     ]);
 
-    // De-duplicate by phone just in case
-    const seen = new Set();
-    const unique = [];
-    for (const r of rows) {
-      const key = (r.phoneNumber || "").trim();
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        unique.push(r);
-      }
-    }
-
-    res.json({ success: true, data: unique });
+    res.json({ success: true, data: rows });
   } catch (e) {
     console.error(e);
     res.json({ success: false, message: "Error" });
