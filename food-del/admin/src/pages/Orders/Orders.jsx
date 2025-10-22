@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+// food-del/admin/src/pages/Orders/Orders.jsx
+import React, { useEffect, useState, useEffect as UseEffect2 } from "react";
 import "./Orders.css";
+import "./InlinePrint.css";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { url } from "../../assets/assets";
@@ -97,6 +99,74 @@ function DateRange({ from, to, onChange }) {
   );
 }
 
+/* ---------- Printable Ticket (inline) ---------- */
+function PrintableTicket({ order }) {
+  if (!order) return null;
+
+  const created = new Date(order.createdAt || Date.now());
+  const two = (n) => String(n).padStart(2, "0");
+  const ts = `${created.getDate()}-${two(created.getMonth() + 1)}-${created.getFullYear()} ${two(created.getHours())}:${two(created.getMinutes())}`;
+  const totalQty = (order.items || []).reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+  const amount = Number(order.amount || 0).toFixed(2);
+
+  return (
+    <div className="ticket-root printable">
+      <div className="ticket">
+        <div className="ticket-header">
+          <div className="brand">MOMO MAGIC</div>
+          <div className="sub">Kitchen Ticket</div>
+        </div>
+
+        <div className="ticket-meta">
+          <div>No: {String(order._id).slice(-6).toUpperCase()}</div>
+          <div>Table: {order.tableNumber ?? "-"}</div>
+          <div>Time: {ts}</div>
+        </div>
+
+        <div className="ticket-sep" />
+
+        <div className="ticket-items">
+          <div className="row head">
+            <div className="col qty">QTY</div>
+            <div className="col name">ITEM</div>
+            <div className="col price">AMT</div>
+          </div>
+          {(order.items || []).map((it, idx) => (
+            <div key={idx} className="row">
+              <div className="col qty">{it.quantity}</div>
+              <div className="col name">{it.name}</div>
+              <div className="col price">₹{Number((it.price || 0) * (it.quantity || 0)).toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="ticket-sep dotted" />
+
+        <div className="ticket-totals">
+          <div className="line">
+            <span>Items</span>
+            <span>{totalQty}</span>
+          </div>
+          <div className="line total">
+            <span>Total</span>
+            <span>₹{amount}</span>
+          </div>
+        </div>
+
+        <div className="ticket-sep" />
+
+        <div className="ticket-footer">
+          <div>Customer: {(order.firstName || "—") + " " + (order.lastName || "")}</div>
+          <div>Status: {String(order.status || "").toUpperCase()}</div>
+          <div className="copy">KITCHEN COPY</div>
+        </div>
+
+        <div className="cut">─────── cut here ───────</div>
+      </div>
+    </div>
+  );
+}
+
 const Orders = () => {
   /* default to today */
   const [from, setFrom] = useState(todayISO());
@@ -104,6 +174,9 @@ const Orders = () => {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // which order is being printed
+  const [printOrder, setPrintOrder] = useState(null);
 
   async function fetchOrders() {
     try {
@@ -121,6 +194,7 @@ const Orders = () => {
     fetchOrders();
   }, [from, to]);
 
+  // status change
   const updateStatus = async (orderId, status) => {
     try {
       const r = await axios.post(`${url}/api/order/status`, { orderId, status });
@@ -134,10 +208,31 @@ const Orders = () => {
     }
   };
 
+  // trigger print in the same tab
+  const handlePrint = (order) => {
+    setPrintOrder(order);
+  };
+
+  // after printOrder mounts, fire print and clean up
+  UseEffect2(() => {
+    if (!printOrder) return;
+    const onAfterPrint = () => setPrintOrder(null);
+    // give the DOM a tick to render the ticket before printing
+    const t = setTimeout(() => window.print(), 50);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+  }, [printOrder]);
+
   const totalOrders = orders.length;
 
   return (
     <div className="orders">
+      {/* inline, hidden until printing */}
+      {printOrder && <PrintableTicket order={printOrder} />}
+
       <div className="orders-head">
         <h3>Orders</h3>
         <div className="orders-filters">
@@ -163,8 +258,6 @@ const Orders = () => {
           <div className="orders-list">
             {orders.map((order) => (
               <div className="order" key={order._id}>
-                {/* image removed on purpose */}
-
                 <div className="order-content">
                   <p className="order-items">
                     {order.items.map((i) => `${i.name} x ${i.quantity}`).join(", ")}
@@ -185,16 +278,25 @@ const Orders = () => {
                   </div>
                 </div>
 
-                <select
-                  className="order-status"
-                  value={order.status}
-                  onChange={(e) => updateStatus(order._id, e.target.value)}
+                <div
+                  className="order-actions"
+                  style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end" }}
                 >
-                  <option value="pending">Pending</option>
-                  <option value="preparing">Preparing</option>
-                  <option value="served">Served</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                  <button className="btn btn-print" onClick={() => handlePrint(order)}>
+                    Print
+                  </button>
+
+                  <select
+                    className="order-status"
+                    value={order.status}
+                    onChange={(e) => updateStatus(order._id, e.target.value)}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="preparing">Preparing</option>
+                    <option value="served">Served</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>

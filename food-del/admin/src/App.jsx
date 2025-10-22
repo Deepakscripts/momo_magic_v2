@@ -1,3 +1,4 @@
+// food-del/admin/src/App.jsx
 import React, { useState } from 'react'
 import Navbar from './components/Navbar/Navbar'
 import Sidebar from './components/Sidebar/Sidebar'
@@ -10,7 +11,6 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 
 const App = () => {
-  // Single source of truth for mobile drawer
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -19,7 +19,6 @@ const App = () => {
       <Navbar onHamburgerClick={() => setSidebarOpen(s => !s)} />
       <hr />
       <div className="app-content">
-        {/* Desktop: static; Mobile: drawer controlled by props */}
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <Routes>
           <Route path="/" element={<Navigate to="/analytics" replace />} />

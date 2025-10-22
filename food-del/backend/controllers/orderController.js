@@ -130,7 +130,7 @@ const placeOrder = async (req, res) => {
 
 /* ---------------- place order (Pay on Counter) ---------------- */
 /**
- * POST /api/order/place-cod
+ * POST /api/order/placecod
  * Body: { userId, firstName, lastName, email?, tableNumber, clientCart? }
  * Requires a valid existing userId. No guest auto-creation here.
  */
@@ -182,10 +182,9 @@ const placeOrderCod = async (req, res) => {
   }
 };
 
-/* ---------------- list with date filter (NEW) ---------------- */
+/* ---------------- list with date filter (admin) ---------------- */
 /**
  * GET /api/order/list?from=YYYY-MM-DD&to=YYYY-MM-DD
- * All params optional. If both missing, returns all orders (desc).
  */
 const listOrders = async (req, res) => {
   try {
@@ -196,7 +195,6 @@ const listOrders = async (req, res) => {
       if (from) q.createdAt.$gte = new Date(from);
       if (to) {
         const t = new Date(to);
-        // if only date given, include the whole day
         if (to.length <= 10) t.setHours(23, 59, 59, 999);
         q.createdAt.$lte = t;
       }
@@ -245,4 +243,33 @@ const verifyOrder = async (req, res) => {
   }
 };
 
-export { placeOrder, listOrders, userOrders, updateStatus, verifyOrder, placeOrderCod };
+/* ---------------- get single order by id (NEW) ---------------- */
+/**
+ * GET /api/order/:id
+ */
+const getOrderById = async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!isMongoId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid order id" });
+    }
+    const order = await orderModel.findById(id).lean();
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    res.json({ success: true, data: order });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: "Error" });
+  }
+};
+
+export {
+  placeOrder,
+  placeOrderCod,
+  listOrders,
+  userOrders,
+  updateStatus,
+  verifyOrder,
+  getOrderById,
+};

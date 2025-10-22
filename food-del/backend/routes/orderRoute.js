@@ -8,12 +8,16 @@ import {
   userOrders,
   verifyOrder,
   placeOrderCod,
+  getOrderById,
 } from "../controllers/orderController.js";
 
 const orderRouter = express.Router();
 
 // Admin: list all orders
 orderRouter.get("/list", listOrders);
+
+// Admin: get single order by id (for printing)
+orderRouter.get("/:id", getOrderById);
 
 // User: list own orders
 orderRouter.post("/userorders", authMiddleware, userOrders);
