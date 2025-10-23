@@ -1,16 +1,21 @@
+// frontend/src/Context/StoreContext.jsx
 import { createContext, useEffect, useState } from "react";
-import { food_list as seedFoodList, menu_list } from "../assets/assets";
+import { menu_list } from "../assets/assets";
 import axios from "axios";
 
 export const StoreContext = createContext(null);
 
 const StoreContextProvider = (props) => {
-  const url = "http://localhost:4000";
+  // Prefer env; fallback to same host the browser is using
+  const API_BASE =
+    import.meta.env.VITE_API_BASE_URL ||
+    `http://${window.location.hostname}:4000`;
+  const url = API_BASE;
+
   const [food_list, setFoodList] = useState([]);
   const [cartItems, setCartItems] = useState({});
   const [token, setToken] = useState("");
   const currency = "₹";
-  // Dine-in: no delivery fee
   const deliveryCharge = 0;
 
   // ---- helpers for local guest cart persistence ----
@@ -39,7 +44,7 @@ const StoreContextProvider = (props) => {
   }, [cartItems, token]);
 
   const addToCart = async (itemId) => {
-    if (!itemId) return; // refuse to mutate for bad ids
+    if (!itemId) return;
     setCartItems((prev) => {
       const next = { ...prev, [itemId]: (prev[itemId] || 0) + 1 };
       return next;
@@ -87,51 +92,15 @@ const StoreContextProvider = (props) => {
       return { ...it, _id: id != null ? String(id) : undefined };
     });
 
-  /**
-   * Merge DB items with seeded items.
-   * Priority: DB > seed when names collide (case-insensitive).
-   * Also dedupe by _id as a final guard.
-   */
-  const mergeFoodLists = (dbRaw = [], seedRaw = []) => {
-    const db = normalizeIds(dbRaw);
-    const seed = normalizeIds(seedRaw);
-
-    // Map DB by lowercased name so DB overrides seed with same name
-    const dbByName = new Map();
-    db.forEach((item) => {
-      const key = (item.name || "").trim().toLowerCase();
-      if (key) dbByName.set(key, item);
-    });
-
-    // Start with seed items that are NOT overridden by DB name
-    const merged = [];
-    seed.forEach((item) => {
-      const key = (item.name || "").trim().toLowerCase();
-      if (!dbByName.has(key)) merged.push(item);
-    });
-
-    // Append all DB items (override behavior already handled)
-    merged.push(...db);
-
-    // Final dedupe by _id for safety
-    const seen = new Set();
-    return merged.filter((it) => {
-      const id = it._id || `${(it.name || "").toLowerCase()}|${it.price}`;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  };
-
+  // Fetch items from backend only (no local seed)
   const fetchFoodList = async () => {
     try {
       const response = await axios.get(url + "/api/food/list");
       const dbItems = Array.isArray(response?.data?.data) ? response.data.data : [];
-      const merged = mergeFoodLists(dbItems, seedFoodList);
-      setFoodList(merged);
-    } catch {
-      // On failure, show seed items so menu isn't empty
-      setFoodList(normalizeIds(seedFoodList));
+      setFoodList(normalizeIds(dbItems));
+    } catch (err) {
+      console.error("Error fetching food list:", err);
+      setFoodList([]); // safe fallback if API fails
     }
   };
 
@@ -143,14 +112,11 @@ const StoreContextProvider = (props) => {
   const loadCartData = async (tokenOrObj) => {
     const hdrs =
       typeof tokenOrObj === "string" ? { token: tokenOrObj } : tokenOrObj;
-    // 1) fetch server cart
+
     const res = await axios.post(url + "/api/cart/get", {}, { headers: hdrs });
     const serverCart = res?.data?.cartData || {};
 
-    // 2) read guest cart stored locally (from pre-login session)
     const guestCart = readGuestCart();
-
-    // 3) if guest cart has items, ask backend to merge, else use server cart
     let merged = serverCart;
     const guestHasItems = Object.values(guestCart).some((q) => Number(q) > 0);
 
@@ -161,11 +127,9 @@ const StoreContextProvider = (props) => {
         { headers: hdrs }
       );
       merged = mergeRes?.data?.cartData || serverCart;
-      // clear guest cart after successful merge
       writeGuestCart({});
     }
 
-    // 4) set application state and mirror to localStorage
     setCartItems(merged);
     writeGuestCart(merged);
     return merged;
@@ -196,11 +160,10 @@ const StoreContextProvider = (props) => {
     getTotalCartAmount,
     token,
     setToken,
-    loadCartData,
     setCartItems,
-    currency,
     deliveryCharge,
-    fetchFoodList, // exposed in case you want to manually refresh after admin actions
+    currency,
+    loadCartData,
   };
 
   return (

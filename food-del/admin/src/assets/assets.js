@@ -5,7 +5,10 @@ import profile_image from './profile_image.png'
 import upload_area from './upload_area.png'
 import parcel_icon from './parcel_icon.png'
 
-export const url = 'http://localhost:4000'
+// Prefer env; fallback to current hostname on port 4000
+export const url =
+  (import.meta && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+  `http://${window.location.hostname}:4000`
 export const currency = '₹'
 
 export const assets ={
@@ -16,4 +19,3 @@ export const assets ={
     upload_area,
     parcel_icon
 }
-

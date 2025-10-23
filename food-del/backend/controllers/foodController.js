@@ -1,55 +1,49 @@
+// backend/controllers/foodController.js
 import foodModel from "../models/foodModel.js";
 
-// GET /api/food/list
-export const listFood = async (_req, res) => {
-  try {
-    const data = await foodModel.find().sort({ createdAt: -1 }).lean();
-    res.json({ success: true, data });
-  } catch (err) {
-    console.error("listFood error:", err);
-    res.json({ success: false, message: "Error fetching items" });
-  }
-};
-
-// POST /api/food/add
-// Body: { name, description?, category, price }
 export const addFood = async (req, res) => {
   try {
-    const { name, description = "", category, price } = req.body || {};
-    if (!name || !category || price == null) {
+    const { name, description, price, category } = req.body;
+    if (!name || !description || price === undefined || !category) {
       return res.json({ success: false, message: "Missing required fields" });
     }
 
-    const doc = await foodModel.create({
+    const food = new foodModel({
       name: String(name).trim(),
-      description: String(description || "").trim(),
-      category: String(category).trim(),
+      description: String(description).trim(),
       price: Number(price),
-      // image is intentionally ignored (optional)
+      category: String(category).trim()
     });
 
-    res.json({ success: true, data: doc });
-  } catch (err) {
-    console.error("addFood error:", err);
-    res.json({ success: false, message: "Error adding item" });
+    await food.save();
+    res.json({ success: true, message: "Food Added" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Add failed" });
   }
 };
 
-// POST /api/food/remove
-// Body: { id }
+export const listFood = async (_req, res) => {
+  try {
+    const foods = await foodModel.find({}).sort({ createdAt: -1 });
+    res.json({ success: true, data: foods });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "List failed" });
+  }
+};
+
 export const removeFood = async (req, res) => {
   try {
-    const { id } = req.body || {};
+    const { id } = req.body;
     if (!id) return res.json({ success: false, message: "Missing id" });
+    const found = await foodModel.findById(id);
+    if (!found) return res.json({ success: false, message: "Not found" });
 
-    const result = await foodModel.findByIdAndDelete(id);
-    if (!result) {
-      return res.json({ success: false, message: "Item not found" });
-    }
-
-    res.json({ success: true, message: "Item removed" });
-  } catch (err) {
-    console.error("removeFood error:", err);
-    res.json({ success: false, message: "Error removing item" });
+    await foodModel.findByIdAndDelete(id);
+    res.json({ success: true, message: "Food Removed" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Remove failed" });
   }
 };

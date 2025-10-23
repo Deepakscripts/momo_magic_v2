@@ -1,83 +1,58 @@
-import React, { useEffect, useState } from "react";
-import "./List.css";
-import axios from "axios";
-import { toast } from "react-toastify";
-import { url, currency } from "../../assets/assets";
+// admin/src/pages/List/List.jsx
+import React, { useEffect, useState } from 'react'
+import './List.css'
+import { url } from '../../assets/assets'
+import axios from 'axios'
+import { toast } from 'react-toastify'
 
 const List = () => {
-  const [list, setList] = useState([]);
+  const [list, setList] = useState([])
 
   const fetchList = async () => {
-    try {
-      const res = await axios.get(`${url}/api/food/list`);
-      if (res.data?.success) {
-        setList(Array.isArray(res.data.data) ? res.data.data : []);
-      } else {
-        setList([]);
-        toast.error(res.data?.message || "Failed to fetch items");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error fetching items");
-      setList([]);
+    const response = await axios.get(`${url}/api/food/list`)
+    if (response.data.success) {
+      setList(response.data.data)
+    } else {
+      toast.error("Failed to fetch list")
     }
-  };
+  }
 
-  const removeFood = async (id) => {
-    try {
-      const res = await axios.post(`${url}/api/food/remove`, { id });
-      if (res.data?.success) {
-        toast.success("Item removed");
-        fetchList();
-      } else {
-        toast.error(res.data?.message || "Failed to remove");
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error removing item");
+  const removeItem = async (id) => {
+    const response = await axios.post(`${url}/api/food/remove`, { id })
+    if (response.data.success) {
+      toast.success(response.data.message)
+      setList(prev => prev.filter(i => i._id !== id))
+    } else {
+      toast.error(response.data.message)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchList();
-  }, []);
+    fetchList()
+  }, [])
 
   return (
-    <div className="list add">
-      <h3>All Foods List</h3>
-
+    <div className='list add'>
       <div className="list-table">
         <div className="list-head">
-          {/* Image column removed */}
-          <div className="col name">Name</div>
-          <div className="col cat">Category</div>
-          <div className="col price">Price</div>
-          <div className="col act">Action</div>
+          <div>Name</div>
+          <div>Category</div>
+          <div>Price</div>
+          <div>Action</div>
         </div>
-
         {list.map((item) => (
-          <div key={item._id} className="list-row">
-            {/* No image cell */}
-            <div className="col name">{item.name}</div>
-            <div className="col cat">{item.category}</div>
-            <div className="col price">
-              {currency}
-              {Number(item.price || 0)}
-            </div>
-            <div className="col act">
-              <button className="del" onClick={() => removeFood(item._id)}>
-                x
-              </button>
+          <div className="list-row" key={item._id}>
+            <div className="name">{item.name}</div>
+            <div>{item.category}</div>
+            <div>₹{item.price}</div>
+            <div>
+              <button className="danger" onClick={() => removeItem(item._id)}>Remove</button>
             </div>
           </div>
         ))}
-
-        {list.length === 0 && (
-          <div className="list-row empty">No items yet. Add something edible.</div>
-        )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default List;
+export default List

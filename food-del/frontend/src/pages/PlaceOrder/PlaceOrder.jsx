@@ -11,6 +11,7 @@ const PlaceOrder = () => {
     token,
     url,
     setCartItems,
+    setToken,          // NEW: so we can clear stale/invalid tokens on 401
     currency,
     cartItems,
     food_list,
@@ -83,7 +84,18 @@ const PlaceOrder = () => {
 
       const response = await axios.post(`${url}/api/order/placecod`, payload, {
         headers: { token },
+        // let us handle 401 cleanly instead of throwing
+        validateStatus: () => true,
       });
+
+      // NEW: handle invalid/expired token from backend
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        setToken("");
+        toast.error(response.data?.message || "Session expired. Sign in again.");
+        navigate("/cart");
+        return;
+      }
 
       if (response.data?.success) {
         toast.success(response.data.message || "Order placed");
