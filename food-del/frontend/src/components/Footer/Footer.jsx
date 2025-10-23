@@ -18,11 +18,12 @@ const Footer = () => {
   return (
     <div className="footer" id="footer">
       <div className="footer-content">
+        {/* Left Section */}
         <div className="footer-content-left">
           <img src={assets.logo} alt="Momo Magic Cafe" className="footer-logo" />
           <p>
-            At Momo Magic Cafe, we serve joy wrapped in every momo. A cozy space to relax, eat, and enjoy authentic flavors —
-            where every visit feels like home.
+            At Momo Magic Cafe, we serve joy wrapped in every momo. A cozy space to relax,
+            eat, and enjoy authentic flavors — where every visit feels like home.
           </p>
 
           <div className="footer-social-icons">
@@ -58,20 +59,41 @@ const Footer = () => {
           </div>
         </div>
 
+        {/* Middle Section */}
         <div className="footer-content-center">
           <h2>COMPANY</h2>
-          <ul>
-            <li onClick={handleHomeClick}>Home</li>
-            <li><Link to="/about">About us</Link></li>
-            <li><Link to="/privacy-policy">Privacy policy</Link></li>
+          <ul className="company-list">
+            <li onClick={handleHomeClick}>
+              <i className="fa-solid fa-house footer-icon"></i>
+              <span>Home</span>
+            </li>
+            <li>
+              <Link to="/about">
+                <i className="fa-regular fa-address-card footer-icon"></i>
+                <span>About us</span>
+              </Link>
+            </li>
+            <li>
+              <Link to="/privacy-policy">
+                <i className="fa-solid fa-lock footer-icon"></i>
+                <span>Privacy policy</span>
+              </Link>
+            </li>
           </ul>
         </div>
 
+        {/* Right Section */}
         <div className="footer-content-right">
           <h2>GET IN TOUCH</h2>
-          <ul>
-            <li>+91-6262111109</li>
-            <li>Khomesh1008sahu@gmail.com</li>
+          <ul className="contact-list">
+            <li className="contact-item">
+              <i className="fa-solid fa-phone contact-icon" aria-hidden="true"></i>
+              <a href="tel:+916262111109">+91-6262111109</a>
+            </li>
+            <li className="contact-item">
+              <i className="fa-solid fa-envelope contact-icon" aria-hidden="true"></i>
+              <a href="mailto:Khomesh1008sahu@gmail.com">Khomesh1008sahu@gmail.com</a>
+            </li>
           </ul>
         </div>
       </div>

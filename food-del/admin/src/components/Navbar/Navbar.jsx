@@ -12,7 +12,7 @@ const Navbar = ({ onHamburgerClick, onAvatarClick }) => {
           ☰
         </button>
         <div className="brand">
-          <span className="brand-name">Tomato.</span>
+          <span className="brand-name">MMC-Bhilai</span>
           <span className="brand-sub">Admin Panel</span>
         </div>
       </div>

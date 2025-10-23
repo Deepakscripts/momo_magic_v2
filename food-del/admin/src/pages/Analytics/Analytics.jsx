@@ -247,10 +247,31 @@ export default function Analytics() {
     ];
   }, [kpiNew.data, kpiRepeat.data, kpiRevenue.data]);
 
-  const ncSeries = (nc.data?.series || []).map(d => ({
-    date: new Date(d.date).toLocaleDateString(),
-    count: d.count
-  }));
+  /* ---- NEW: build a full month series for New Customers ---- */
+  const { seriesFull, dayTicks } = useMemo(() => {
+    const yr = Number(ncYear);
+    const mo = Number(ncMonth);
+    const daysInMonth = new Date(yr, mo, 0).getDate();
+
+    // Map API series -> { 'YYYY-MM-DD': count }
+    const raw = Array.isArray(nc.data?.series) ? nc.data.series : [];
+    const byDate = new Map(raw.map(d => [String(d.date).slice(0,10), Number(d.count) || 0]));
+
+    // Full month with zeros for missing days
+    const full = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const iso = `${ncYear}-${ncMonth}-${pad(day)}`;
+      return { day: String(day), dateISO: iso, count: byDate.get(iso) ?? 0 };
+    });
+
+    // Choose sparse ticks so labels don't clutter
+    const step = Math.max(1, Math.ceil(daysInMonth / 10)); // ~10 ticks
+    const ticks = Array.from({ length: daysInMonth }, (_, i) => String(i + 1))
+      .filter((_, i) => i % step === 0 || i === 0 || i === daysInMonth - 1);
+
+    return { seriesFull: full, dayTicks: ticks };
+  }, [nc.data, ncMonth, ncYear]);
+
   const revData = (rev.data?.rows || []).map((r) => ({
     week: `W${r._id.week}`,
     revenue: Number(r.totalRevenue || 0),
@@ -335,7 +356,7 @@ export default function Analytics() {
         </div>
         <div className="chart">
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={ncSeries}>
+            <LineChart data={seriesFull}>
               <defs>
                 <linearGradient id="gradLine" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="tomato" stopOpacity={0.9}/>
@@ -343,9 +364,20 @@ export default function Analytics() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3}/>
-              <XAxis dataKey="date" />
+              {/* show day numbers as ticks; sparse to avoid clutter */}
+              <XAxis
+                dataKey="day"
+                ticks={dayTicks}
+                tick={{ fontSize: 11 }}
+              />
               <YAxis allowDecimals={false} />
-              <Tooltip />
+              <Tooltip
+                labelFormatter={(lab) => {
+                  const iso = `${ncYear}-${ncMonth}-${pad(lab)}`;
+                  return format(parseISO(iso), "dd/MM/yyyy");
+                }}
+                formatter={(v) => [`${v}`, "count"]}
+              />
               <Line type="monotone" dataKey="count" stroke="tomato" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
