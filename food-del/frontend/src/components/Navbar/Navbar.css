@@ -217,3 +217,10 @@
   right: 0;
   z-index: 1;
 }
+
+.logo {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+}
+

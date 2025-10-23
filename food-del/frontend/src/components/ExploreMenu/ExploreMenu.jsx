@@ -5,6 +5,9 @@ import { menu_list } from "../../assets/assets";
 /**
  * Category strip WITHOUT an "All" pill.
  * Clicking a category sets that filter. "View Menu" button resets it.
+ * - Uniform circular thumbnails
+ * - Clear selected state with orange ring
+ * - Accessible (aria-selected + focus-visible)
  */
 const ExploreMenu = ({ category, setCategory }) => {
   const onPick = (name) => setCategory(name);
@@ -17,22 +20,25 @@ const ExploreMenu = ({ category, setCategory }) => {
         is to satisfy your cravings and elevate your dining experience.
       </p>
 
-      <div className="explore-menu-list">
-        {menu_list.map((item) => (
-          <div
-            key={item.menu_name}
-            className={`explore-menu-list-item ${
-              String(category) === String(item.menu_name) ? "active" : ""
-            }`}
-            onClick={() => onPick(item.menu_name)}
-            role="button"
-            tabIndex={0}
-          >
-            {/* keep images here if you still use them for categories; hide via CSS if not */}
-            <img src={item.menu_image} alt="" className="menu-image" />
-            <div className="explore-menu-item-name">{item.menu_name}</div>
-          </div>
-        ))}
+      <div className="explore-menu-list" role="listbox" aria-label="Food categories">
+        {menu_list.map((item) => {
+          const isActive = String(category) === String(item.menu_name);
+          return (
+            <button
+              key={item.menu_name}
+              type="button"
+              className={`explore-menu-list-item ${isActive ? "active" : ""}`}
+              onClick={() => onPick(item.menu_name)}
+              role="option"
+              aria-selected={isActive}
+              tabIndex={0}
+              title={item.menu_name}
+            >
+              <img src={item.menu_image} alt={item.menu_name} className="menu-image" />
+              <div className="explore-menu-item-name">{item.menu_name}</div>
+            </button>
+          );
+        })}
       </div>
 
       <hr />

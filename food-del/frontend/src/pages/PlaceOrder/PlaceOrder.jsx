@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import "./PlaceOrder.css";
 import { StoreContext } from "../../Context/StoreContext";
 import { useNavigate } from "react-router-dom";
@@ -8,13 +8,15 @@ import axios from "axios";
 const PlaceOrder = () => {
   const {
     getTotalCartAmount,
+    getAddOnTotal,
+    getGrandTotal,
+    buildClientCartSnapshot,
+    setCheeseAddOns,
     token,
     url,
     setCartItems,
-    setToken,          // NEW: so we can clear stale/invalid tokens on 401
+    setToken,
     currency,
-    cartItems,
-    food_list,
   } = useContext(StoreContext);
 
   const navigate = useNavigate();
@@ -32,26 +34,12 @@ const PlaceOrder = () => {
     setData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // compute a local snapshot of the cart for the backend (works for seed + DB items)
-  const clientCart = useMemo(() => {
-    const items = [];
-    Object.entries(cartItems || {}).forEach(([id, qty]) => {
-      const quantity = Number(qty) || 0;
-      if (quantity <= 0) return;
-      const prod = (food_list || []).find((p) => String(p._id) === String(id));
-      if (!prod) return;
-      items.push({
-        itemId: String(prod._id),
-        name: String(prod.name || ""),
-        price: Number(prod.price || 0),
-        quantity,
-      });
-    });
-    return items;
-  }, [cartItems, food_list]);
+  // Snapshot of items to send, INCLUDING add-ons
+  const clientCart = useMemo(() => buildClientCartSnapshot(), [buildClientCartSnapshot]);
 
-  const subtotal = useMemo(() => getTotalCartAmount(), [cartItems, food_list]);
-  const total = subtotal; // no delivery fee
+  const cartSubtotal = useMemo(() => getTotalCartAmount(), [getTotalCartAmount]);
+  const cheeseTotal = useMemo(() => getAddOnTotal(), [getAddOnTotal]);
+  const grandTotal = useMemo(() => getGrandTotal(), [getGrandTotal]);
 
   const placeOrder = async (e) => {
     e.preventDefault();
@@ -67,7 +55,8 @@ const PlaceOrder = () => {
       return;
     }
 
-    if (!clientCart.length) {
+    // require at least one real menu item (add-ons alone should not be orderable)
+    if (cartSubtotal <= 0) {
       toast.error("Your cart is empty");
       return;
     }
@@ -78,17 +67,23 @@ const PlaceOrder = () => {
         lastName: data.lastName.trim(),
         email: (data.email || "").trim(),
         tableNumber: Number(data.tableNumber),
-        // send snapshot so backend can handle seed items too
+
+        // the whole line-item list, including add-ons
         clientCart,
+
+        // optional metadata the backend can use or ignore
+        meta: {
+          cheeseTotal,
+          grandTotal,
+          currency,
+        },
       };
 
       const response = await axios.post(`${url}/api/order/placecod`, payload, {
         headers: { token },
-        // let us handle 401 cleanly instead of throwing
         validateStatus: () => true,
       });
 
-      // NEW: handle invalid/expired token from backend
       if (response.status === 401) {
         localStorage.removeItem("token");
         setToken("");
@@ -100,6 +95,7 @@ const PlaceOrder = () => {
       if (response.data?.success) {
         toast.success(response.data.message || "Order placed");
         setCartItems({});
+        setCheeseAddOns({ pasta: 0, moburg: 0 }); // reset add-ons after successful order
         navigate("/myorders");
       } else {
         toast.error(response.data?.message || "Something went wrong");
@@ -115,6 +111,7 @@ const PlaceOrder = () => {
       toast.error("Please sign in to place an order");
       navigate("/cart");
     } else if (getTotalCartAmount() === 0) {
+      // allow page if there are add-ons, but still need at least one base item
       navigate("/cart");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,15 +176,29 @@ const PlaceOrder = () => {
               <p>Subtotal</p>
               <p>
                 {currency}
-                {subtotal}
+                {cartSubtotal}
               </p>
             </div>
+
+            {cheeseTotal > 0 && (
+              <>
+                <hr />
+                <div className="cart-total-details">
+                  <p>Extra Cheese</p>
+                  <p>
+                    {currency}
+                    {cheeseTotal}
+                  </p>
+                </div>
+              </>
+            )}
+
             <hr />
             <div className="cart-total-details">
               <b>Total</b>
               <b>
                 {currency}
-                {total}
+                {grandTotal}
               </b>
             </div>
           </div>
@@ -199,7 +210,7 @@ const PlaceOrder = () => {
             <span className="dot" aria-hidden>
               ●
             </span>
-            <p>POC (pay on counter)</p>
+            <p>POC (Pay On Counter)</p>
           </div>
         </div>
 
