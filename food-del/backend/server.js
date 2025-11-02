@@ -11,7 +11,7 @@ import smsRouter from "./routes/smsRoute.js";
 
 // NEW: analytics + dev seed routes
 import analyticsRouter from "./routes/analyticsRoute.js";
-import devRouter from "./routes/devRoute.js";
+
 
 // app config
 const app = express();
@@ -72,9 +72,6 @@ app.use("/api/sms", smsRouter);
 
 // NEW: analytics endpoints (charts on admin panel call these)
 app.use("/api/analytics", analyticsRouter);
-
-// NEW: dev-only seed/purge endpoints (guarded by ALLOW_DEV_SEED=true)
-app.use("/api/dev", devRouter);
 
 // root
 app.get("/", (_req, res) => {

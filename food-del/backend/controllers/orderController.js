@@ -62,71 +62,71 @@ function coerceClientCart(clientCart = []) {
  * Body: { userId, firstName, lastName, email?, tableNumber, clientCart? }
  * Requires a valid existing userId. No guest auto-creation here.
  */
-const placeOrder = async (req, res) => {
-  try {
-    const { userId, firstName, lastName, email = "", tableNumber, clientCart } = req.body;
+// const placeOrder = async (req, res) => {
+//   try {
+//     const { userId, firstName, lastName, email = "", tableNumber, clientCart } = req.body;
 
-    if (!isMongoId(userId)) {
-      return res.json({ success: false, message: "Invalid user" });
-    }
-    const user = await userModel.findById(userId);
-    if (!user) {
-      return res.json({ success: false, message: "User not found" });
-    }
+//     if (!isMongoId(userId)) {
+//       return res.json({ success: false, message: "Invalid user" });
+//     }
+//     const user = await userModel.findById(userId);
+//     if (!user) {
+//       return res.json({ success: false, message: "User not found" });
+//     }
 
-    if (!String(firstName || "").trim() || !String(lastName || "").trim() || !tableNumber) {
-      return res.json({ success: false, message: "Missing required fields" });
-    }
+//     if (!String(firstName || "").trim() || !String(lastName || "").trim() || !tableNumber) {
+//       return res.json({ success: false, message: "Missing required fields" });
+//     }
 
-    // Prefer client snapshot; fallback to server cart
-    let items = [], amount = 0;
-    if (Array.isArray(clientCart) && clientCart.length) {
-      ({ items, amount } = coerceClientCart(clientCart));
-    } else {
-      ({ items, amount } = await buildItemsAndAmount(user.cartData || {}));
-    }
+//     // Prefer client snapshot; fallback to server cart
+//     let items = [], amount = 0;
+//     if (Array.isArray(clientCart) && clientCart.length) {
+//       ({ items, amount } = coerceClientCart(clientCart));
+//     } else {
+//       ({ items, amount } = await buildItemsAndAmount(user.cartData || {}));
+//     }
 
-    if (!items.length) {
-      return res.json({ success: false, message: "Cart is empty" });
-    }
+//     if (!items.length) {
+//       return res.json({ success: false, message: "Cart is empty" });
+//     }
 
-    const newOrder = await orderModel.create({
-      userId: String(user._id),
-      firstName: String(firstName).trim(),
-      lastName:  String(lastName).trim(),
-      email:     String(email || "").trim(),
-      tableNumber: Number(tableNumber),
-      items,
-      amount,
-      payment: false,
-      status: "pending",
-    });
+//     const newOrder = await orderModel.create({
+//       userId: String(user._id),
+//       firstName: String(firstName).trim(),
+//       lastName:  String(lastName).trim(),
+//       email:     String(email || "").trim(),
+//       tableNumber: Number(tableNumber),
+//       items,
+//       amount,
+//       payment: false,
+//       status: "pending",
+//     });
 
-    const line_items = items.map((i) => ({
-      price_data: {
-        currency,
-        product_data: { name: i.name },
-        unit_amount: Math.round(Number(i.price || 0) * 100),
-      },
-      quantity: i.quantity,
-    }));
+//     const line_items = items.map((i) => ({
+//       price_data: {
+//         currency,
+//         product_data: { name: i.name },
+//         unit_amount: Math.round(Number(i.price || 0) * 100),
+//       },
+//       quantity: i.quantity,
+//     }));
 
-    const session = await stripe.checkout.sessions.create({
-      success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
-      cancel_url:  `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
-      line_items,
-      mode: "payment",
-    });
+//     const session = await stripe.checkout.sessions.create({
+//       success_url: `${frontend_URL}/verify?success=true&orderId=${newOrder._id}`,
+//       cancel_url:  `${frontend_URL}/verify?success=false&orderId=${newOrder._id}`,
+//       line_items,
+//       mode: "payment",
+//     });
 
-    // clear server cart after creating the session
-    await userModel.findByIdAndUpdate(user._id, { cartData: {} });
+//     // clear server cart after creating the session
+//     await userModel.findByIdAndUpdate(user._id, { cartData: {} });
 
-    res.json({ success: true, session_url: session.url });
-  } catch (error) {
-    console.error(error);
-    res.json({ success: false, message: "Error" });
-  }
-};
+//     res.json({ success: true, session_url: session.url });
+//   } catch (error) {
+//     console.error(error);
+//     res.json({ success: false, message: "Error" });
+//   }
+// };
 
 /* ---------------- place order (Pay on Counter) ---------------- */
 /**
@@ -265,7 +265,7 @@ const getOrderById = async (req, res) => {
 };
 
 export {
-  placeOrder,
+  // placeOrder,
   placeOrderCod,
   listOrders,
   userOrders,

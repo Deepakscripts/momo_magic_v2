@@ -3,7 +3,7 @@ import express from "express";
 import authMiddleware from "../middleware/auth.js";
 import {
   listOrders,
-  placeOrder,
+  // placeOrder,
   updateStatus,
   userOrders,
   verifyOrder,
@@ -23,7 +23,7 @@ orderRouter.get("/:id", getOrderById);
 orderRouter.post("/userorders", authMiddleware, userOrders);
 
 // Stripe path (kept for future): creates order, returns session URL
-orderRouter.post("/place", authMiddleware, placeOrder);
+// orderRouter.post("/place", authMiddleware, placeOrder);
 
 // Update order status (admin panel)
 orderRouter.post("/status", updateStatus);
