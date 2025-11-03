@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema(
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
     email: { type: String, trim: true, default: "" },
-    tableNumber: { type: Number, required: true, min: 1, max: 5 },
+    tableNumber: { type: Number, required: true, min: 1, max: 7 },
 
     // Cart snapshot
     items: { type: [orderItemSchema], required: true },
