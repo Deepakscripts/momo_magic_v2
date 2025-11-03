@@ -18,7 +18,9 @@ const List = () => {
   }
 
   const removeItem = async (id) => {
-    const response = await axios.post(`${url}/api/food/remove`, { id })
+    const response = await axios.post(`${url}/api/food/remove`, { id }, {
+      headers: { "x-admin-key": ADMIN_KEY },
+    })
     if (response.data.success) {
       toast.success(response.data.message)
       setList(prev => prev.filter(i => i._id !== id))

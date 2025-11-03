@@ -8,6 +8,8 @@ import { url } from "../../assets/assets";
 import DatePicker from "react-datepicker";
 import { format, parseISO } from "date-fns";
 import "react-datepicker/dist/react-datepicker.css";
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY;
+
 
 /* helpers */
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -181,7 +183,9 @@ const Orders = () => {
   async function fetchOrders() {
     try {
       setLoading(true);
-      const r = await axios.get(`${url}/api/order/list${qs({ from, to })}`);
+      const r = await axios.get(`${url}/api/order/list${qs({ from, to })}`, {
+        headers: { "x-admin-key": ADMIN_KEY },
+      });
       setOrders(Array.isArray(r.data?.data) ? r.data.data : []);
     } catch {
       toast.error("Failed to load orders");
@@ -197,7 +201,9 @@ const Orders = () => {
   // status change
   const updateStatus = async (orderId, status) => {
     try {
-      const r = await axios.post(`${url}/api/order/status`, { orderId, status });
+      const r = await axios.post(`${url}/api/order/status`, { orderId, status }, {
+        headers: { "x-admin-key": ADMIN_KEY },
+      });
       if (r.data?.success) {
         setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status } : o)));
       } else {

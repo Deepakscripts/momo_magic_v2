@@ -4,6 +4,8 @@ import "./Add.css";
 import { url } from "../../assets/assets";
 import axios from "axios";
 import { toast } from "react-toastify";
+const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY;
+
 
 const CATEGORIES = [
   "Sizzlers",
@@ -52,7 +54,10 @@ const Add = () => {
       }
 
       const response = await axios.post(`${url}/api/food/add`, payload, {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "x-admin-key": ADMIN_KEY,
+          "Content-Type": "application/json"
+        }
       });
 
       if (response.data?.success) {
