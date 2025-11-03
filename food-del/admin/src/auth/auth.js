@@ -2,13 +2,13 @@
 export const USERS = {
   admin: {
     id: "admin",            // <<< change me
-    password: "Admin@123",  // <<< change me
+    password: "Admin@6262111109",  // <<< change me
     role: "admin",
     display: "Admin",
   },
   developer: {
     id: "developer",         // <<< change me
-    password: "Dev@123",     // <<< change me
+    password: "Dev@7470669907",     // <<< change me
     role: "developer",
     display: "Developer",
   },

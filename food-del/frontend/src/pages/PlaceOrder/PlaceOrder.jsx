@@ -159,7 +159,7 @@ const PlaceOrder = () => {
             <option value="" disabled>
               Table Number
             </option>
-            {[1, 2, 3, 4, 5].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
