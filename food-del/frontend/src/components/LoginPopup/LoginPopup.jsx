@@ -6,7 +6,7 @@ import { StoreContext } from '../../Context/StoreContext'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 
-const LoginPopup = ({ setShowLogin }) => {
+const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
   const { token, setToken, url, loadCartData } = useContext(StoreContext)
 
   const [phone, setPhone] = useState('')
@@ -19,10 +19,12 @@ const LoginPopup = ({ setShowLogin }) => {
   const otpReqAbortRef = useRef(null)
   const verifyAbortRef = useRef(null)
 
-  // 1) If a token exists at any point, close the modal. This kills the race.
+  // 1) If a token exists AND we are NOT in forced login, close the modal.
   useEffect(() => {
-    if (token) setShowLogin(false)
-  }, [token, setShowLogin])
+    if (token && !forceLogin) {
+      setShowLogin(false)
+    }
+  }, [token, setShowLogin, forceLogin])
 
   // cooldown timer for resend
   const startCooldown = (seconds = 60) => {
@@ -104,7 +106,9 @@ const LoginPopup = ({ setShowLogin }) => {
         await loadCartData({ token: res.data.token })
         toast.success('Logged in successfully')
         // Optional: immediate close for snappy UX (effect is the real guarantee)
-        setShowLogin(false)
+        if (!forceLogin) {
+          setShowLogin(false)
+        }
       } else {
         // After a success, the server clears OTP. Any second submit will say "Request a new OTP".
         toast.error(res.data?.message || 'Invalid OTP')
@@ -133,7 +137,7 @@ const LoginPopup = ({ setShowLogin }) => {
       <form onSubmit={step === 'phone' ? sendOtp : verifyOtp} className="login-popup-container">
         <div className="login-popup-title">
           <h2>{step === 'phone' ? 'Sign in with phone' : 'Enter OTP'}</h2>
-          <img onClick={() => setShowLogin(false)} src={assets.cross_icon} alt="" />
+          {!forceLogin && <img onClick={() => setShowLogin(false)} src={assets.cross_icon} alt="Close" />}
         </div>
 
         <div className="login-popup-inputs">

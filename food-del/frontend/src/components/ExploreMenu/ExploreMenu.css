@@ -14,6 +14,16 @@
     color: #808080;
 }
 
+/* --- CHANGED --- */
+/* This container will now use Flexbox to arrange the buttons and the list */
+.explore-menu-list-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Adds a small space between buttons and the list */
+}
+
 /* Scrollable row of category cards */
 .explore-menu-list {
     display: flex;
@@ -22,14 +32,23 @@
     text-align: center;
     margin: 20px 0;
     overflow-x: auto;
-    padding: 6px 2px;
+    /* --- CHANGED --- */
+    /* Padding is no longer needed to avoid buttons */
+    padding: 6px 10px;
     scroll-snap-type: x mandatory;
+    /* Smooth scrolling behavior */
+    scroll-behavior: smooth;
+    /* --- ADDED --- */
+    /* This makes the list take up all available space between the buttons */
+    flex: 1;
+    /* This prevents the list from shrinking or breaking in flex container */
+    min-width: 0;
 }
 
 .explore-menu-list::-webkit-scrollbar {
     display: none;
 }
-
+/* ... (rest of .explore-menu-list-item and other styles are unchanged) ... */
 /* Each category behaves like a small card */
 .explore-menu-list-item {
     --size: clamp(90px, 10vw, 128px);
@@ -102,6 +121,43 @@
     height: 2px;
     background-color: #e2e2e2;
     border: none;
+}
+
+/* --- New Scroll Button Styles --- */
+.menu-scroll-btn {
+    /* --- REMOVED --- */
+    /* position: absolute; */
+    /* top: 50%; */
+    /* transform: translateY(-50%); */
+    /* z-index: 10; */
+
+    /* Style to match site */
+    background: #ffffff;
+    border: 1px solid #ffded7;
+    color: #ff4c24;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    
+    /* --- ADDED --- */
+    /* This stops the buttons from shrinking when the screen is narrow */
+    flex-shrink: 0;
+}
+
+.menu-scroll-btn:hover {
+    background: #fff4f2;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.menu-scroll-btn i {
+    font-size: 16px;
+    line-height: 1;
 }
 
 /* Responsive copy width */

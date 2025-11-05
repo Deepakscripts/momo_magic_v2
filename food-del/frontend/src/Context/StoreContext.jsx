@@ -15,6 +15,7 @@ const StoreContextProvider = (props) => {
   const [food_list, setFoodList] = useState([]);
   const [cartItems, setCartItems] = useState({});
   const [token, setToken] = useState("");
+  const [isAuthReady, setIsAuthReady] = useState(false); // <--- ADDED
 
   const currency = "₹";
   const deliveryCharge = 0;
@@ -271,13 +272,19 @@ const StoreContextProvider = (props) => {
   // initial boot
   useEffect(() => {
     async function loadData() {
-      await fetchFoodList();
-      const saved = localStorage.getItem("token");
-      if (saved) {
-        setToken(saved);
-        await loadCartData({ token: saved });
-      } else {
-        setCartItems(readGuestCart());
+      try {
+        await fetchFoodList();
+        const saved = localStorage.getItem("token");
+        if (saved) {
+          setToken(saved);
+          await loadCartData({ token: saved });
+        } else {
+          setCartItems(readGuestCart());
+        }
+      } catch (error) {
+        console.error("Initial data load failed", error);
+      } finally {
+        setIsAuthReady(true); // <--- ADDED
       }
     }
     loadData();
@@ -305,6 +312,7 @@ const StoreContextProvider = (props) => {
     token,
     setToken,
     loadCartData,
+    isAuthReady, // <--- ADDED
 
     // add-ons
     cheeseAddOns,

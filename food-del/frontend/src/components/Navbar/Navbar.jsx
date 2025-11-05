@@ -4,7 +4,7 @@ import { assets } from "../../assets/assets";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { StoreContext } from "../../Context/StoreContext";
 
-const Navbar = ({ setShowLogin }) => {
+const Navbar = () => {
   const { getTotalCartAmount, token, setToken } = useContext(StoreContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,7 +33,9 @@ const Navbar = ({ setShowLogin }) => {
       navigate("/myorders");
       setMenu("orders");
     } else {
-      setShowLogin(true);
+      // No token, but login is forced, so this button
+      // will only be shown when logged in anyway.
+      // No action needed if no token.
     }
   };
 
@@ -115,7 +117,7 @@ const Navbar = ({ setShowLogin }) => {
         </Link>
 
         {!token ? (
-          <button onClick={() => setShowLogin(true)}>Sign In</button>
+          <></> // "Sign In" button removed
         ) : (
           <div className="navbar-profile-container">
             <div className="navbar-icon-container">
