@@ -78,3 +78,8 @@ a {
     width: 90%;
   }
 }
+
+/* Ensure toast notifications always appear above any popup */
+.Toastify__toast-container {
+  z-index: 10000 !important;
+}

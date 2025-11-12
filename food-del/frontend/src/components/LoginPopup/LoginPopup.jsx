@@ -11,22 +11,28 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
 
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
-  const [step, setStep] = useState('phone') // "phone" | "otp"
+  const [step, setStep] = useState('phone')
   const [busy, setBusy] = useState(false)
   const [cooldown, setCooldown] = useState(0)
 
-  // Abort controllers to cancel in-flight requests when a new one starts
   const otpReqAbortRef = useRef(null)
   const verifyAbortRef = useRef(null)
 
-  // 1) If a token exists AND we are NOT in forced login, close the modal.
   useEffect(() => {
     if (token && !forceLogin) {
       setShowLogin(false)
     }
   }, [token, setShowLogin, forceLogin])
 
-  // cooldown timer for resend
+  // ✅ Prevent background scroll, but keep popup clickable
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [])
+
   const startCooldown = (seconds = 60) => {
     const s = Number(seconds) || 60
     setCooldown(s)
@@ -49,7 +55,6 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
     }
     if (cooldown > 0 || busy) return
 
-    // cancel any prior OTP request
     if (otpReqAbortRef.current) otpReqAbortRef.current.abort()
     otpReqAbortRef.current = new AbortController()
 
@@ -72,7 +77,6 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
         toast.error(res.data?.message || 'Could not send OTP')
       }
     } catch (err) {
-      // Ignore cancellations; only surface real failures
       if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
         console.error(err)
         toast.error('Failed to send OTP')
@@ -87,7 +91,6 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
     if (busy) return
     if (!otp.trim()) return
 
-    // cancel any previous verify to prevent double-submit races
     if (verifyAbortRef.current) verifyAbortRef.current.abort()
     verifyAbortRef.current = new AbortController()
 
@@ -100,21 +103,17 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
       )
 
       if (res.data?.success && res.data?.token) {
-        // Set token first; the token effect will auto-close the modal even if some late error arrives.
         setToken(res.data.token)
         localStorage.setItem('token', res.data.token)
         await loadCartData({ token: res.data.token })
         toast.success('Logged in successfully')
-        // Optional: immediate close for snappy UX (effect is the real guarantee)
         if (!forceLogin) {
           setShowLogin(false)
         }
       } else {
-        // After a success, the server clears OTP. Any second submit will say "Request a new OTP".
         toast.error(res.data?.message || 'Invalid OTP')
       }
     } catch (err) {
-      // If a late request gets canceled because the modal closed, do NOT scream “failed.”
       if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
         console.error(err)
         toast.error('Verification failed')
@@ -124,7 +123,6 @@ const LoginPopup = ({ setShowLogin, forceLogin = false }) => {
     }
   }
 
-  // Clean up on unmount: cancel outstanding requests
   useEffect(() => {
     return () => {
       if (otpReqAbortRef.current) otpReqAbortRef.current.abort()
